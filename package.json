@@ -7,6 +7,7 @@
     "start": "node scripts/serve.mjs",
     "test": "node tests/run-tests.mjs",
     "prix": "node scripts/fetch-prices.mjs && node scripts/build-data.mjs",
-    "data": "node scripts/build-data.mjs"
+    "data": "node scripts/build-data.mjs",
+    "controle": "node scripts/review-products.mjs"
   }
 }

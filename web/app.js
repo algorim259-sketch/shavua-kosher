@@ -63,7 +63,7 @@
   function defaultStores(list) {
     const seen = new Set(); const out = [];
     for (const { s } of list) if (!seen.has(s.chain)) { seen.add(s.chain); out.push(s.key); }
-    return out.slice(0, 4);
+    return out; // le plus proche de chaque chaîne
   }
   function searchCities(q) {
     q = q.trim().toLowerCase(); if (q.length < 2) return [];

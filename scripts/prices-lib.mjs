@@ -43,10 +43,28 @@ export function packGrams(item, ing) {
   }
   // Unité inconnue (Osher Ad : « לא ידוע ») : un petit nombre = kilos ou litres, sinon grammes.
   if (item.qty > 0) return item.qty <= 10 ? item.qty * 1000 : item.qty;
+  // Pas de quantité du tout (Victory) : on la lit dans le nom (« 200 גר », « 1 ק"ג », « 750 מל »).
+  const fromName = gramsFromName(item.name);
+  if (fromName) return fromName;
+  if (ing.unitG) { const n = item.name.match(/(\d+)\s*(?:יח|ביצים)/); if (n && +n[1] > 1) return +n[1] * ing.unitG; }
   return null;
 }
 
+export function gramsFromName(name) {
+  const m = name.match(/(\d+(?:[.,]\d+)?)\s*(ק"ג|קג|קילו|ק'|ליטר|ל'|ל(?=\s|$)|מ"ל|מל|מ'ל|גרם|גר'|גר|ג'|ג(?=\s|$))/);
+  if (!m) return null;
+  const n = parseFloat(m[1].replace(',', '.'));
+  if (!n) return null;
+  const big = /^(ק"ג|קג|קילו|ק'|ליטר|ל'|ל)$/.test(m[2]);
+  const mult = name.slice(m.index - 3, m.index).match(/(\d+)\s*\*\s*$/); // « 4*160 גר »
+  return Math.round((big ? n * 1000 : n) * (mult ? +mult[1] : 1));
+}
+
+// jamais de nourriture pour animaux, quel que soit l'ingrédient
+// jamais de produits d'hygiène non plus (« ת.רחצה מלפפון » = gel douche au concombre)
+const PET = /לכלב|לחתול|כלבים|חתולים|לחיות|רחצה|סבון|שמפו|דאודורנט|קרם |ת\.רחצה|מרכך/;
 const matches = (name, ing) =>
+  !PET.test(name) &&
   ing.match.some((alt) => alt.every((k) => name.includes(k))) &&
   !(ing.exclude || []).some((k) => name.includes(k));
 
@@ -63,6 +81,7 @@ export function pickProducts(items, ingredients) {
       if (!it.weighted && g > (ing.maxPackG || 2000)) continue; // pas de seau de 3 kg pour une semaine
       const perKg = (it.price / g) * 1000;
       if (ing.maxPerKg && perKg > ing.maxPerKg) continue;
+      if (ing.minPerKg && perKg < ing.minPerKg) continue; // prix au kilo absurde (vendu à l'unité)
       if (!best || perKg < best.perKg) {
         best = { code: it.code, name: it.name, price: it.price, packG: Math.round(g), weighted: it.weighted, perKg: Math.round(perKg * 100) / 100 };
       }

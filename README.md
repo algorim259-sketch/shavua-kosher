@@ -17,10 +17,17 @@ puis ouvrir http://localhost:5173 (le site charge les prix de chaque magasin à 
 npm run prix
 ```
 - Récupère les listes de magasins et les prix publics (loi sur la transparence des prix) :
-  **Shufersal** (site web), **Rami Levy** et **Osher Ad** (serveur commun `publishedprices`, nom public de la chaîne, sans mot de passe).
+  **Shufersal** (site web), **Rami Levy**, **Osher Ad** et **Yochananof** (serveur commun `publishedprices`, nom public de la chaîne, sans mot de passe), **Victory** (laibcatalog.co.il).
 - Villes : codes officiels de data.gov.il ; position des villes cherchée une fois sur OpenStreetMap et gardée dans `data/cities.json`.
 - Pour chaque magasin, garde le produit le moins cher au kilo de chaque ingrédient → `web/prices/<chaîne>-<magasin>.json`.
 - Une seule chaîne : `node scripts/fetch-prices.mjs --chain ramilevy`.
+
+## Contrôle des produits
+
+```
+npm run controle
+```
+Liste, pour chaque ingrédient, les produits retenus dans tous les magasins (pour repérer une erreur du genre « épinards » = friandise pour chien). Les mauvais choix se corrigent avec `exclude` dans `data/ingredients.json`.
 
 ## Tests
 
@@ -49,7 +56,8 @@ npm test
 ## Pas encore fait
 
 - Paiement (39 ₪ / mois) : il faut choisir un prestataire et ouvrir un compte (à faire par Allan).
-- Autres chaînes : Victory, Yochananof, Tiv Taam, Carrefour, Hazi Hinam…
+- Autres chaînes : Tiv Taam, Carrefour, Hazi Hinam…
+- 4 magasins Yochananof sans ville identifiable (noms trop vagues).
 - Promotions (fichiers `PromoFull`), mise à jour automatique chaque nuit, mise en ligne.
 - Vrais logos des chaînes (pour l'instant : pastilles de couleur avec les initiales).
 - Valeurs nutritionnelles à vérifier avec une vraie base de données.

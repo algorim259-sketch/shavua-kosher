@@ -23,6 +23,8 @@ export const CHAINS = {
   shufersal: { he: 'שופרסל', fr: 'Shufersal', type: 'shufersal' },
   ramilevy: { he: 'רמי לוי', fr: 'Rami Levy', type: 'cerberus', user: 'RamiLevi', chainId: '7290058140886' },
   osherad: { he: 'אושר עד', fr: 'Osher Ad', type: 'cerberus', user: 'osherad', chainId: '7290103152017' },
+  yochananof: { he: 'יוחננוף', fr: 'Yochananof', type: 'cerberus', user: 'yohananof', chainId: '7290803800003' },
+  victory: { he: 'ויקטורי', fr: 'Victory', type: 'laib', chainId: '7290696200003' },
 };
 
 const args = process.argv.slice(2);
@@ -79,7 +81,29 @@ function cerberus(c) {
     },
   };
 }
-const engine = (key) => (CHAINS[key].type === 'shufersal' ? shufersal : cerberus(CHAINS[key]));
+// ---------- laibcatalog.co.il (Victory) : liste des fichiers en JSON, sans compte ----------
+function laib(c) {
+  const LB = 'https://laibcatalog.co.il/webapi';
+  let files = null;
+  const list = async () => (files ||= JSON.parse((await curl(`${LB}/api/getfiles?edi=${c.chainId}`)).toString('utf8')));
+  const latest = (arr) => arr.sort((a, b) => a.fileName.localeCompare(b.fileName)).pop();
+  return {
+    async stores() {
+      const f = latest((await list()).filter((x) => x.fileType === 'stores' || x.fileType === 'storefull'));
+      return parseStoresXml(decodeFile(await curl(`${LB}/${c.chainId}/${f.fileName}`), gunzipSync)).filter((s) => !/אינטרנט|online/i.test(s.name));
+    },
+    async priceXml(store) {
+      const f = latest((await list()).filter((x) => x.fileType === 'pricefull' && Number(x.branchNumber) === store.id));
+      if (!f) return null;
+      return { xml: decodeFile(await curl(`${LB}/${c.chainId}/${f.fileName}`), gunzipSync), date: (f.fileName.match(/-(\d{8})-/) || [])[1] };
+    },
+  };
+}
+
+const engine = (key) => {
+  const c = CHAINS[key];
+  return c.type === 'shufersal' ? shufersal : c.type === 'laib' ? laib(c) : cerberus(c);
+};
 
 // ---------- Villes : codes officiels (data.gov.il) + position (OpenStreetMap) ----------
 async function cities(codesWithStores) {
@@ -128,7 +152,26 @@ for (const key of keys) {
   allStores = allStores.filter((s) => s.chain !== key).concat(stores.map((s) => ({ chain: key, ...s })));
 }
 const city = await cities(new Set(allStores.map((s) => s.cityCode)));
+const ALIASES = JSON.parse(readFileSync(path('data/city-aliases.json'), 'utf8'));
+// villes et conseils locaux connus, les noms les plus longs d'abord (« קרית אונו » avant « אונו »)
+const TOWNS = Object.values(city).filter((c) => c.council === 0 && c.lat != null && c.he.length >= 3).sort((a, b) => b.he.length - a.he.length);
 for (const s of allStores) {
+  if (!city[s.cityCode]) {
+    const norm = (x) => x.replace(/[-–־"'״׳\s]+/g, '');
+    const byHe = (he) => Object.values(city).find((c) => norm(c.he) === norm(he));
+    let found = null;
+    // 1) Victory écrit le nom de la ville (« גן יבנה ») au lieu du code officiel.
+    if (s.cityCode) found = Object.values(city).find((c) => norm(c.he) === norm(s.cityCode) || norm(c.he).startsWith(norm(s.cityCode)));
+    // 2) Noms écrits autrement (data/city-aliases.json), dans la ville donnée ou le nom du magasin.
+    if (!found) {
+      const hay = `${s.cityCode} ${s.name}`;
+      const key = Object.keys(ALIASES).filter((k) => k !== '_note' && hay.includes(k)).sort((a, b) => b.length - a.length)[0];
+      if (key) found = byHe(ALIASES[key]);
+    }
+    // 3) Yochananof ne donne pas de ville : on cherche une ville dans le nom du magasin.
+    if (!found && !s.cityCode) found = TOWNS.find((c) => s.name.includes(c.he.replace(/ - .*/, '')));
+    if (found) s.cityCode = found.code;
+  }
   const c = city[s.cityCode];
   s.city = c ? c.he : '';
   if (c && c.lat != null) { s.lat = c.lat; s.lon = c.lon; }

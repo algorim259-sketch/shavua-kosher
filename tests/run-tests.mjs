@@ -50,6 +50,24 @@ const picked = pickProducts(items, data.ingredients);
 t('cottage le moins cher', picked.cottage && picked.cottage.code === '3');
 t('banane : pas la boisson', picked.banana && picked.banana.code === '4');
 
+// --- Erreurs déjà rencontrées dans les vrais fichiers ---
+const it = (code, name, qty, unit, price, w = 0) => `<Item><ItemCode>${code}</ItemCode><ItemName>${name}</ItemName><Quantity>${qty}</Quantity><UnitQty>${unit}</UnitQty><ItemPrice>${price}</ItemPrice><bIsWeighted>${w}</bIsWeighted></Item>`;
+const traps = parsePriceXml(`<Root><Items>
+${it('a', 'ת.רחצה מלפפון750מ לה מון', '750', 'מיליליטר', '1.00')}${it('b', 'מלפפון', '1', 'קילוגרם', '7.90', 1)}
+${it('c', 'חטיף ברונו לכלבים נקניקיות ברווז ותרד 80', '', '', '1.00', 1)}${it('d', 'עלי תרד בייבי 400 גר (ק)', '400', 'גרם', '15.90')}
+${it('e', 'אפרסק פיתה', '1', 'קילוגרם', '1.00', 1)}${it('f', 'פיתות של פעם10*100ג אנגל', '1000', 'גרם', '13.90')}
+${it('g', 'בשר טחון עוף ארוז 1 קג בלדי', '', '', '1.00')}${it('h', 'בשר בקר טחון קפוא', '1', 'קילוגרם', '39.90', 1)}
+${it('i', 'קמח תפוח אדמה 500', '500', 'גרם', '1.00')}${it('j', 'תפוח אדמה לבן ארוז', '1', 'קילוגרם', '4.50', 1)}
+</Items></Root>`);
+const tp = pickProducts(traps, data.ingredients);
+t('pas de gel douche pour les concombres', tp.cucumber && tp.cucumber.code === 'b');
+t('pas de friandise pour chien pour les épinards', tp.spinach && tp.spinach.code === 'd');
+t('pas de pêche pour les pitas', tp.pita && tp.pita.code === 'f');
+t('pas de poulet haché pour le bœuf', tp.beef && tp.beef.code === 'h');
+t('pas de fécule pour les pommes de terre', tp.potato && tp.potato.code === 'j');
+const { gramsFromName } = await import('../scripts/prices-lib.mjs');
+t('quantité lue dans le nom', gramsFromName('אורז פרסי 1 קג') === 1000 && gramsFromName('יוגורט יווני 600 גר גד') === 600 && gramsFromName('טונה במים רביעייה 4*160 גר') === 640);
+
 // --- Semaine ---
 const plan = Plan.buildPlan(man, data, prices, 42, 150);
 t('7 jours', plan.days.length === 7);

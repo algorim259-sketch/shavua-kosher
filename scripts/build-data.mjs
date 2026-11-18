@@ -9,6 +9,8 @@ const CHAINS = {
   shufersal: { he: 'שופרסל', fr: 'Shufersal', short: 'ש', color: 'red' },
   ramilevy: { he: 'רמי לוי', fr: 'Rami Levy', short: 'ר״ל', color: 'blue' },
   osherad: { he: 'אושר עד', fr: 'Osher Ad', short: 'א״ע', color: 'amber' },
+  yochananof: { he: 'יוחננוף', fr: 'Yochananof', short: 'י', color: 'purple' },
+  victory: { he: 'ויקטורי', fr: 'Victory', short: 'V', color: 'green' },
 };
 
 const MIN_INGREDIENTS = 30; // un magasin doit avoir au moins 30 des 38 ingrédients

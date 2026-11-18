@@ -9,5 +9,12 @@
     "prix": "node scripts/fetch-prices.mjs && node scripts/build-data.mjs",
     "data": "node scripts/build-data.mjs",
     "controle": "node scripts/review-products.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.3",
+    "@capacitor/core": "^6.2.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.1"
   }
 }

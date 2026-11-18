@@ -63,3 +63,14 @@ npm test
 - Valeurs nutritionnelles à vérifier avec une vraie base de données.
 
 Photos : [Unsplash](https://unsplash.com) (licence Unsplash, gratuites).
+
+## APK Android (pour le téléphone)
+
+Le site est emballé dans une app avec Capacitor (dossier `android/`).
+```
+npx cap sync android
+cd android && ./gradlew assembleDebug
+```
+(Java 17 : `JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-17.0.20.101-hotspot"`, SDK : `ANDROID_HOME="$LOCALAPPDATA/Android/Sdk"`.)
+L'APK sort dans `android/app/build/outputs/apk/debug/app-debug.apk` ; on le copie dans `Bureau\rentacouse apk\ShavuaKosher-test-vN.apk`.
+Les prix sont ceux du moment du build : refaire `npm run prix` puis `npx cap sync android` avant chaque nouvel APK.

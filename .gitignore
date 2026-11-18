@@ -1,2 +1,5 @@
 node_modules/
 *.gz
+android/app/build/
+android/build/
+android/.gradle/

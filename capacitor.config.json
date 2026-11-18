@@ -1,0 +1,6 @@
+{
+  "appId": "com.allan.shavuakosher",
+  "appName": "שבוע כושר",
+  "webDir": "web",
+  "android": { "allowMixedContent": false }
+}

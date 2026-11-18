@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">שבוע כושר</string>
+    <string name="title_activity_main">שבוע כושר</string>
+    <string name="package_name">com.allan.shavuakosher</string>
+    <string name="custom_url_scheme">com.allan.shavuakosher</string>
+</resources>

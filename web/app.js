@@ -32,7 +32,8 @@
   const name = (x) => (lang === 'he' ? x.he : x.fr);
   const save = () => store.set('profile', profile);
   const img = (id, w, h) => `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format&q=70`;
-  const chainBadge = (key, size) => { const c = DATA.chains[key]; return `<span class="badge-chain ${c.color}${size ? ' ' + size : ''}" title="${esc(name(c))}">${c.short}</span>`; };
+  const LOGOS = { shufersal: 'logos/shufersal.svg', ramilevy: 'logos/ramilevy.png', osherad: 'logos/osherad.png', yochananof: 'logos/yochananof.png', victory: 'logos/victory.svg' };
+  const chainBadge = (key, size) => { const c = DATA.chains[key]; return `<span class="badge-chain logo${size ? ' ' + size : ''}" title="${esc(name(c))}"><img src="${LOGOS[key]}" alt="${esc(name(c))}"></span>`; };
   // « texte |mise en valeur » → la fin du titre en vert, en italique
   const title = (s) => { const [a, b] = s.split('|'); return b == null ? esc(a) : `${esc(a)}<em>${esc(b)}</em>`; };
 
@@ -84,19 +85,47 @@
   document.querySelector('[data-go="home"]').onclick = (e) => { e.preventDefault(); plan = null; go(0); };
 
   // ---------- Accueil ----------
+  // ---------- Accueil ----------
+  let refPrices = null; // prix d'un magasin de référence pour afficher « ₪ la portion » sur l'accueil
   function home() {
     const hasPlan = profile.goal && profile.stores.length && profile.sex && profile.budget;
-    const strip = ['shakshuka', 'chicken-pita', 'salmon-rice', 'mujadara', 'yogurt-bowl', 'bolognese'].map((id) => RECIPE[id]).filter(Boolean);
+    const R = DATA.recipes;
+    const half = Math.ceil(R.length / 2);
+    const card = (r) => {
+      const info = Plan.recipeInfo(r, DATA.ingredientsById, refPrices);
+      return `<figure class="rcard"><img src="${img(r.img, 360, 260)}" alt="" loading="lazy">
+        <figcaption><b>${esc(name(r))}</b><span>${Math.round(info.p)} ${t.g} ${t.prot} · ${r.min} ${t.min}${refPrices && info.cost ? ` · <em>${nis(info.cost)}</em>` : ''}</span></figcaption></figure>`;
+    };
+    // chaque rangée est répétée deux fois pour défiler sans coupure
+    const row = (list, dir) => `<div class="marquee ${dir}"><div class="track">${list.map(card).join('')}${list.map(card).join('')}</div></div>`;
+    const cities = new Set(DATA.stores.map((s) => s.cityCode)).size;
+    if (!refPrices && DATA.stores.length) {
+      const ref = DATA.stores.find((s) => s.chain === 'ramilevy') || DATA.stores[0];
+      loadPrices([ref.key]).then(() => { refPrices = PRICES[ref.key]; if (step === 0) { app.querySelectorAll('.marquee').forEach((m, i) => { m.outerHTML = row(i ? R.slice(half) : R.slice(0, half), i ? 'rev' : 'fwd'); }); } });
+    }
     return `
-    <section class="hero">
-      <div class="hero-img" style="background-image:url('${img('1546069901-ba9599a7e63c', 900, 620)}')"><span class="chip on-photo">${t.tag}</span></div>
-      <h1>${esc(t.hero1)}<br><em>${esc(t.hero2)}</em></h1>
+    <section class="hero2">
+      <p class="eyebrow"><span class="dot"></span>${t.heroTag}</p>
+      <h1 class="hook">${esc(t.hook1)}<br><em>${esc(t.hook2)}</em></h1>
       <p class="sub">${t.heroSub}</p>
       <button class="cta" data-act="start"><span>${t.start}</span><span class="cta-arrow arrow">←</span></button>
+      <p class="note">${t.heroNote}</p>
       ${hasPlan ? `<button class="ghost" data-act="mine">${t.see}</button>` : ''}
-      <div class="chains"><span>${t.chainsLine}</span>${Object.keys(DATA.chains).map((k) => `<span class="chain-pill">${chainBadge(k, 'sm')}${esc(name(DATA.chains[k]))}</span>`).join('')}</div>
     </section>
-    <section class="strip">${strip.map((r) => `<figure><img src="${img(r.img, 320, 240)}" alt=""><figcaption>${esc(name(r))}</figcaption></figure>`).join('')}</section>
+    <section class="logos">
+      <p>${t.logosTitle.replace('{n}', DATA.stores.length)}</p>
+      <div class="logo-row">${Object.keys(DATA.chains).map((k) => `<span class="logo-tile"><img src="${LOGOS[k]}" alt="${esc(name(DATA.chains[k]))}"></span>`).join('')}</div>
+    </section>
+    <section class="recipes">
+      <h2>${t.recipesTitle.replace('{n}', R.length)}</h2>
+      ${row(R.slice(0, half), 'fwd')}${row(R.slice(half), 'rev')}
+    </section>
+    <section class="stats">
+      <div><b data-count="${DATA.stores.length}">${DATA.stores.length}</b><span>${t.statStores}</span></div>
+      <div><b data-count="${Object.keys(DATA.chains).length}">${Object.keys(DATA.chains).length}</b><span>${t.statChains}</span></div>
+      <div><b data-count="${cities}">${cities}</b><span>${t.statCities}</span></div>
+      <div><b data-count="${R.length}">${R.length}</b><span>${t.statRecipes}</span></div>
+    </section>
     <section class="how">
       <h2>${t.how}</h2>
       <ol class="steps">
@@ -106,7 +135,11 @@
       </ol>
     </section>
     ${priceCard()}
-    <p class="fine">${t.disclaimer}<br>${t.photos}</p>`;
+    <section class="final">
+      <h2>${t.finalCta}</h2>
+      <button class="cta" data-act="start"><span>${t.start}</span><span class="cta-arrow arrow">←</span></button>
+    </section>
+    <p class="fine">${t.disclaimer}<br>${t.photos} · ${t.logosNote}</p>`;
   }
 
   function priceCard() {
@@ -145,7 +178,7 @@
       html += list.length ? `<p class="sub">${t.nearby}</p><div class="stores">${list.map(({ s, d }) => `
         <button class="store-row ${profile.stores.includes(s.key) ? 'on' : ''}" data-store="${s.key}">
           ${chainBadge(s.chain)}
-          <span class="what"><b>${esc(name(DATA.chains[s.chain]))} · ${esc(s.name)}</b><small>${esc(s.address)}${s.city ? ', ' + esc(s.city) : ''}</small></span>
+          <span class="what"><b>${esc(name(DATA.chains[s.chain]))} · ${esc(s.name)}</b><small>${/unknown/i.test(s.address || "") ? "" : esc(s.address)}${s.city ? ', ' + esc(s.city) : ''}</small></span>
           <span class="dist">${d != null ? `${d < 1 ? '<1' : Math.round(d)} ${t.km}` : t.sameArea}</span>
           <span class="tick">✓</span>
         </button>`).join('')}</div>` : `<p class="warn">${t.noStores}</p>`;

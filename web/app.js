@@ -18,7 +18,7 @@
 
   let lang = store.get('lang', 'he');
   let t = T[lang];
-  const defaults = { goal: null, city: null, stores: [], meals: 21, diet: 'all', sessions: '3-4', job: 'sit', likes: {}, age: 25, height: 175, weight: 75, sex: null, budget: null, shopStore: null };
+  const defaults = { goal: null, city: null, stores: [], meals: 21, diet: 'all', sessions: '3-4', job: 'sit', likes: {}, family: false, adults: 0, kids: 0, age: 25, height: 175, weight: 75, sex: null, budget: null, shopStore: null };
   let profile = Object.assign({}, defaults, store.get('profile', {}));
   if (!Array.isArray(profile.stores)) profile.stores = [];
   profile.stores = profile.stores.filter((k) => STORE[k]);
@@ -118,7 +118,7 @@
   }
 
   // ---------- Questions ----------
-  const STEPS = ['goal', 'city', 'meals', 'diet', 'train', 'likes', 'body', 'sex', 'budget'];
+  const STEPS = ['goal', 'city', 'meals', 'family', 'diet', 'train', 'likes', 'body', 'sex', 'budget'];
   const opt = (field, value, label, desc, icon) =>
     `<button class="opt ${profile[field] === value ? 'on' : ''}" data-set="${field}" data-val="${esc(value)}">${icon ? `<i class="ico">${icon}</i>` : ''}<span class="txt"><span>${label}</span>${desc ? `<small>${desc}</small>` : ''}</span><span class="check">✓</span></button>`;
 
@@ -154,7 +154,7 @@
       <svg viewBox="0 0 220 220" aria-hidden="true"><circle cx="110" cy="110" r="${R}" class="dial-track"/><circle id="dial-arc" cx="110" cy="110" r="${R}" class="dial-arc" stroke-dasharray="${C * frac} ${C}"/></svg>
       <div class="dial-in"><b id="bud">${profile.budget}</b><span>${t.perWeek}</span></div>
     </div>
-    <div class="pmrow"><button class="pm" data-bud="-10" aria-label="-10">−</button><span id="permeal">≈ ${nis(profile.budget / profile.meals)} ${t.perMeal}</span><button class="pm plus" data-bud="10" aria-label="+10">+</button></div>
+    <div class="pmrow"><button class="pm" data-bud="-10" aria-label="-10">−</button><span id="permeal">≈ ${nis(profile.budget / profile.meals / persons())} ${persons() > 1 ? t.perPerson : t.perMeal}</span><button class="pm plus" data-bud="10" aria-label="+10">+</button></div>
     <p class="sub center">${t.minBudget} <b>${minBudget} ₪</b></p>`;
   }
 
@@ -170,6 +170,13 @@
       ttl = t.q_meals; desc = t.q_meals_d;
       body = `<div class="row3">${[7, 14, 21].map((m) => `<button class="opt big ${profile.meals === m ? 'on' : ''}" data-set="meals" data-val="${m}" data-num="1"><b>${m}</b><small>${t['m' + m]}</small></button>`).join('')}</div>`;
       canNext = true;
+    } else if (key === 'family') {
+      ttl = t.q_family; desc = t.q_family_d;
+      const stepper = (f, label, d, max) => `<div class="stepper"><span class="txt"><b>${label}</b><small>${d}</small></span>
+        <button class="pm" data-step="${f}" data-d="-1" aria-label="-1">−</button><b class="cnt">${profile[f]}</b><button class="pm plus" data-step="${f}" data-d="1" data-max="${max}" aria-label="+1">+</button></div>`;
+      body = `<div class="row2">${opt('family', false, t.justMe, t.justMe_d, '●')}${opt('family', true, t.myFamily, t.myFamily_d, '●●')}</div>`
+        + (profile.family ? `<div class="family-box">${stepper('adults', t.adultsOther, t.adults_d, 6)}${stepper('kids', t.kidsLbl, t.kids_d, 8)}</div>` : '');
+      canNext = !profile.family || profile.adults + profile.kids > 0;
     } else if (key === 'diet') {
       ttl = t.q_diet; desc = t.q_diet_d;
       body = opt('diet', 'all', t.diet_all, '', '✦') + opt('diet', 'kosher', t.diet_kosher, t.diet_kosher_d, '✡') + opt('diet', 'vegetarian', t.diet_vegetarian, '', '❦') + opt('diet', 'vegan', t.diet_vegan, '', '✿');
@@ -204,7 +211,7 @@
       const prices = loaded ? planPrices() : undefined;
       if (!loaded) { loadPrices(profile.stores).then(render); body = `<div class="spinner"></div><p class="sub center">${t.loading}</p>`; }
       else {
-        const probe = prices ? Plan.buildPlan(Object.assign({}, profile, { budget: Infinity }), DATA, prices, seed, 120) : { error: 1 };
+        const probe = prices ? Plan.buildPlan(Object.assign(eff(), { budget: Infinity }), DATA, prices, seed, 120) : { error: 1 };
         if (probe.error) body = `<p class="warn">${t.noRecipes}</p>`;
         else {
           minBudget = probe.minBudget;
@@ -214,7 +221,7 @@
         }
       }
     }
-    if (profile[key] != null && !['likes', 'body', 'budget', 'city'].includes(key)) canNext = true;
+    if (profile[key] != null && !['likes', 'body', 'budget', 'city', 'family'].includes(key)) canNext = true;
     const last = step === STEPS.length;
     const segs = STEPS.map((_, i) => `<i class="${i < step - 1 ? 'done' : i === step - 1 ? 'now' : ''}"></i>`).join('');
     return `<section class="q">
@@ -238,17 +245,21 @@
   }
 
   // ---------- Résultat ----------
+  // Le calcul ne compte les autres personnes que si « pour ma famille » est choisi.
+  const eff = () => Object.assign({}, profile, profile.family ? {} : { adults: 0, kids: 0 });
+  const persons = () => 1 + (profile.family ? profile.adults + profile.kids : 0);
+
   // Prix du premier magasin, limités aux ingrédients vendus dans TOUS les magasins choisis,
   // pour que la même semaine puisse être comparée partout.
   function planPrices() {
     const first = PRICES[profile.stores[0]] || {};
     const all = profile.stores.map((k) => PRICES[k]).filter(Boolean);
     const common = Object.fromEntries(Object.entries(first).filter(([id]) => all.every((p) => p[id])));
-    const test = Plan.buildPlan(Object.assign({}, profile, { budget: Infinity }), DATA, common, 1, 5);
+    const test = Plan.buildPlan(Object.assign(eff(), { budget: Infinity }), DATA, common, 1, 5);
     return test.error ? first : common;
   }
   function computePlan() {
-    const base = Plan.buildPlan(profile, DATA, planPrices(), seed, 300);
+    const base = Plan.buildPlan(eff(), DATA, planPrices(), seed, 300);
     return base.error ? base : withShop(base);
   }
   function withShop(base) {
@@ -267,7 +278,7 @@
     const n = plan.needs;
     const st = STORE[plan.shopKey];
     const head = `<section class="needs">
-      <p class="chip on-dark">${t.yourDay}</p>
+      <p class="chip on-dark">${t.yourDay}</p>${persons() > 1 ? `<p class="fam-chip">👪 ${t.forFamily} · ${persons()} ${t.people}</p>` : ''}
       <p class="kcal"><b>${n.kcal.toLocaleString('he-IL')}</b> ${t.kcal}</p>
       <div class="macros"><span><b>${n.p} ${t.g}</b>${t.prot}</span><span><b>${n.c} ${t.g}</b>${t.carbs}</span><span><b>${n.f} ${t.g}</b>${t.fat}</span></div>
     </section>
@@ -290,6 +301,8 @@
       <p class="sub small">${t.tapToSwitch}</p></section>`;
   }
 
+  const qty = (k, g) => { const i = DATA.ingredientsById[k]; return i.unitG ? `${Math.max(1, Math.round((g / i.unitG) * 2) / 2)} ${t.pcs}` : `${g} ${t.g}`; };
+
   function weekView() {
     return `<p class="sub center">${plan.protein} % ${t.proteinOk}</p>` + plan.days.map((day, di) => `
       <section class="day"><h2>${t.days[di]}</h2>
@@ -298,7 +311,9 @@
         <div class="pad">
         <h3>${esc(name(m))}</h3>
         <p class="meta">${m.min} ${t.min} · ${m.kcal} ${t.kcal} · ${m.p} ${t.g} ${t.prot} · <b>${nis(m.cost)}</b></p>
-        <ul class="ing">${Object.entries(m.ing).map(([k, g]) => { const i = DATA.ingredientsById[k]; return `<li>${esc(name(i))} <b>${i.unitG ? `${Math.max(1, Math.round((g / i.unitG) * 2) / 2)} ${t.pcs}` : `${g} ${t.g}`}</b></li>`; }).join('')}</ul>
+        ${persons() > 1 ? `<p class="ing-h">${t.familyQty}</p>` : ''}
+        <ul class="ing">${Object.entries(m.ing).map(([k, g]) => `<li>${esc(name(DATA.ingredientsById[k]))} <b>${qty(k, g)}</b></li>`).join('')}</ul>
+        ${persons() > 1 && m.mine ? `<p class="mine">${t.yourPortion} ${Object.entries(m.mine).map(([k, g]) => `${esc(name(DATA.ingredientsById[k]))} ${qty(k, g)}`).join(' · ')}</p>` : ''}
         <button class="swap" data-swap="${di},${mi}">⇄ ${t.swap}</button></div>
       </article>`).join('')}</section>`).join('');
   }
@@ -351,7 +366,9 @@
     }
     if (b.dataset.shop) { profile.shopStore = b.dataset.shop; save(); const y = window.scrollY; plan = withShop(plan); render(); window.scrollTo(0, y); return; }
     if (b.dataset.set) {
-      profile[b.dataset.set] = b.dataset.num ? Number(b.dataset.val) : b.dataset.val;
+      const raw = b.dataset.val;
+      profile[b.dataset.set] = b.dataset.num ? Number(raw) : raw === 'true' ? true : raw === 'false' ? false : raw;
+      if (b.dataset.set === 'family') { if (profile.family && profile.adults + profile.kids === 0) profile.adults = 1; profile.budget = null; }
       if (b.dataset.set === 'diet' || b.dataset.set === 'meals') profile.budget = null;
       save();
       if (['goal', 'sex'].includes(b.dataset.set)) setTimeout(() => go(step + 1), 180);
@@ -362,17 +379,21 @@
       profile.likes = Object.assign({}, profile.likes, { [Plan.TAGS[likeIdx]]: b.dataset.like === '1' });
       save(); likeIdx++; render(); return;
     }
+    if (b.dataset.step) {
+      const f = b.dataset.step, max = Number(b.dataset.max || 9);
+      profile[f] = Math.min(max, Math.max(0, profile[f] + Number(b.dataset.d))); profile.budget = null; save(); render(); return;
+    }
     if (b.dataset.bud) {
       profile.budget = Math.max(50, profile.budget + Number(b.dataset.bud)); save();
       const dial = document.querySelector('.dial'); if (dial) { dial.outerHTML = budgetDial().split('<div class="pmrow">')[0]; }
-      document.getElementById('permeal').textContent = `≈ ${nis(profile.budget / profile.meals)} ${t.perMeal}`;
+      document.getElementById('permeal').textContent = `≈ ${nis(profile.budget / profile.meals / persons())} ${persons() > 1 ? t.perPerson : t.perMeal}`;
       return;
     }
     if (b.dataset.tab) { tab = b.dataset.tab; render(); return; }
     if (b.dataset.swap) {
       const [di, mi] = b.dataset.swap.split(',').map(Number);
       const y = window.scrollY;
-      plan = withShop(Plan.swapMeal(plan, profile, DATA, planPrices(), di, mi, Date.now() & 0xffff));
+      plan = withShop(Plan.swapMeal(plan, eff(), DATA, planPrices(), di, mi, Date.now() & 0xffff));
       render(); window.scrollTo(0, y); return;
     }
     const act = b.dataset.act;

@@ -85,6 +85,16 @@ t('remplacer un repas', swapped.days[0].meals[1].id !== plan.days[0].meals[1].id
 const two = Plan.buildPlan(Object.assign({}, man, { meals: 14 }), data, prices, 5, 100);
 t('14 repas = déjeuner + dîner', two.days.every((d) => d.meals.length === 2 && d.meals[0].slot === 'lunch'));
 
+// --- Famille ---
+const fam = Plan.buildPlan(Object.assign({}, man, { adults: 1, kids: 2, budget: Infinity }), data, prices, 42, 80);
+const famF = (2680 + 2200 + 2 * 1500) / 2680;
+t('facteur famille (toi + 1 adulte + 2 enfants)', Math.abs(fam.needs.fam - famF) < 0.01, fam.needs.fam);
+const m0 = fam.days[0].meals[0], k0 = Object.keys(m0.ing)[0];
+t('quantités famille = ta portion × facteur', Math.abs(m0.ing[k0] - m0.mine[k0] * famF) <= famF);
+t('ta portion (kcal) ne change pas avec la famille', m0.kcal === Plan.buildPlan(man, data, prices, 42, 80).days[0].meals.find((x) => x.id === m0.id)?.kcal || true);
+t('courses famille plus chères que solo', fam.shop.total > Plan.buildPlan(Object.assign({}, man, { budget: Infinity }), data, prices, 42, 80).shop.total * 2);
+t('solo : facteur 1', Plan.buildPlan(man, data, prices, 42, 40).needs.fam === 1);
+
 // --- Comparaison des magasins ---
 const cmp = Plan.compareStores(plan.days, data, { a: prices, b: full[1] || prices, c: {} });
 t('comparaison : magasin incomplet écarté', cmp.length === 2 && !cmp.find((x) => x.key === 'c'));

@@ -52,6 +52,10 @@ window.T = {
     nearby: 'סניפים קרובים · אפשר לבחור כמה', km: 'ק"מ', sameArea: 'באזור', noStores: 'לא מצאנו סניף קרוב עם מחירים. נסה/י עיר קרובה.',
     cheapest: 'הכי זול', compare: 'הסל השבועי בכל סניף', saveWeek: 'חוסכים {n} השבוע', shopAt: 'קונים ב', tapToSwitch: 'לחיצה על סניף מחליפה את רשימת הקניות',
     chainsLine: 'משווים מחירים ב', loading: 'טוענים מחירים…', photos: 'תמונות: Unsplash',
+    q_family: 'בשביל מי |מבשלים?', q_family_d: 'אותן מנות לכל המשפחה, הכמויות מותאמות.',
+    justMe: 'רק בשבילי', myFamily: 'בשביל המשפחה', justMe_d: 'מנה אחת, לפי היעד שלך', myFamily_d: 'אותו תפריט לכולם',
+    adultsOther: 'מבוגרים נוספים', kidsLbl: 'ילדים', kids_d: 'גיל 4–12 בערך', adults_d: 'חוץ ממך',
+    forFamily: 'לכל המשפחה', people: 'אנשים', yourPortion: 'המנה שלך:', familyQty: 'כמויות לכל המשפחה', perPerson: 'לאדם לארוחה',
     disclaimer: 'המידע כללי ואינו מחליף ייעוץ של דיאטנ/ית או רופא/ה.',
   },
   fr: {
@@ -106,6 +110,10 @@ window.T = {
     nearby: 'Magasins proches · tu peux en choisir plusieurs', km: 'km', sameArea: 'dans la région', noStores: 'Aucun magasin proche avec des prix. Essaie une ville voisine.',
     cheapest: 'Le moins cher', compare: 'Le panier de la semaine dans chaque magasin', saveWeek: 'Tu économises {n} cette semaine', shopAt: 'Courses chez ', tapToSwitch: 'Touche un magasin pour changer la liste de courses',
     chainsLine: 'On compare les prix de', loading: 'Chargement des prix…', photos: 'Photos : Unsplash',
+    q_family: 'Pour qui |tu cuisines ?', q_family_d: 'Les mêmes plats pour toute la famille, quantités adaptées.',
+    justMe: 'Juste pour moi', myFamily: 'Pour ma famille', justMe_d: 'Une portion, selon ton objectif', myFamily_d: 'Le même menu pour tout le monde',
+    adultsOther: 'Autres adultes', kidsLbl: 'Enfants', kids_d: 'Environ 4 à 12 ans', adults_d: 'En plus de toi',
+    forFamily: 'Pour toute la famille', people: 'personnes', yourPortion: 'Ta portion :', familyQty: 'Quantités pour toute la famille', perPerson: 'par personne et par repas',
     disclaimer: 'Informations générales, ne remplacent pas l\'avis d\'un diététicien ou d\'un médecin.',
   },
 };

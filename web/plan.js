@@ -98,14 +98,25 @@
 
   const scaleFor = (target, kcal) => Math.min(2.2, Math.max(0.6, target / kcal));
 
+  // Famille : mêmes plats pour tout le monde, quantités multipliées.
+  // Repères moyens : un autre adulte ≈ 2 200 kcal/jour, un enfant (4–12 ans) ≈ 1 500 kcal/jour.
+  const ADULT_KCAL = 2200, CHILD_KCAL = 1500;
+  function familyFactor(profile, daily) {
+    const a = Math.max(0, profile.adults || 0), k = Math.max(0, profile.kids || 0);
+    return (daily.kcal + a * ADULT_KCAL + k * CHILD_KCAL) / daily.kcal;
+  }
+
+  // kcal et protéines = TA portion ; ing et cost = pour toute la famille ; mine = tes grammes.
   function makeMeal(cand, slot, share, daily) {
     const factor = scaleFor(daily.kcal * share, cand.info.kcal);
+    const fam = daily.fam || 1;
     return {
       slot, id: cand.r.id, he: cand.r.he, fr: cand.r.fr, min: cand.r.min, type: cand.info.type,
       factor: Math.round(factor * 100) / 100,
       kcal: Math.round(cand.info.kcal * factor), p: Math.round(cand.info.p * factor),
-      cost: Math.round(cand.info.cost * factor * 100) / 100,
-      ing: Object.fromEntries(Object.entries(cand.r.ing).map(([k, g]) => [k, Math.round(g * factor)])),
+      cost: Math.round(cand.info.cost * factor * fam * 100) / 100,
+      ing: Object.fromEntries(Object.entries(cand.r.ing).map(([k, g]) => [k, Math.round(g * factor * fam)])),
+      mine: Object.fromEntries(Object.entries(cand.r.ing).map(([k, g]) => [k, Math.round(g * factor)])),
     };
   }
 
@@ -166,6 +177,7 @@
   function buildPlan(profile, data, prices, seed, tries) {
     tries = tries || 300;
     const daily = needs(profile);
+    daily.fam = Math.round(familyFactor(profile, daily) * 1000) / 1000;
     const cands = candidates(profile, data, prices);
     if (!cands.main.length || ((profile.meals || 21) === 21 && !cands.breakfast.length)) return { error: 'no-recipes', needs: daily };
     const rand = rng(seed || 1);
@@ -244,7 +256,7 @@
     return Object.assign({}, raw, { ingredientsById });
   }
 
-  const api = { needs, recipeInfo, buildPlan, swapMeal, shopping, compareStores, repriceDays, prepare, rng, SLOTS, TAGS };
+  const api = { needs, familyFactor, recipeInfo, buildPlan, swapMeal, shopping, compareStores, repriceDays, prepare, rng, SLOTS, TAGS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Plan = api;
 })(typeof window !== 'undefined' ? window : this);

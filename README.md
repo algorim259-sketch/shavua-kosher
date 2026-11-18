@@ -74,3 +74,15 @@ cd android && ./gradlew assembleDebug
 (Java 17 : `JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-17.0.20.101-hotspot"`, SDK : `ANDROID_HOME="$LOCALAPPDATA/Android/Sdk"`.)
 L'APK sort dans `android/app/build/outputs/apk/debug/app-debug.apk` ; on le copie dans `Bureau\rentacouse apk\ShavuaKosher-test-vN.apk`.
 Les prix sont ceux du moment du build : refaire `npm run prix` puis `npx cap sync android` avant chaque nouvel APK.
+
+## Site en ligne (GitHub Pages)
+
+Adresse : https://algorim259-sketch.github.io/shavua-kosher/
+
+`.github/workflows/site.yml` publie le dossier `web/` :
+- à chaque `git push` sur `main` ;
+- chaque nuit vers 4 h (heure d'Israël) après avoir récupéré les prix du jour (et les enregistre dans le dépôt) ;
+- à la main : onglet **Actions** → « Site en ligne » → **Run workflow**.
+
+Si une chaîne refuse la connexion depuis les serveurs de GitHub, ses derniers prix connus restent en ligne.
+Le site n'est pas référencé par les moteurs de recherche (`noindex`) : on y accède par le lien.

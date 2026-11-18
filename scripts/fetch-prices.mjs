@@ -146,10 +146,15 @@ const storesFile = path('data/stores.json');
 let allStores = existsSync(storesFile) ? JSON.parse(readFileSync(storesFile, 'utf8')) : [];
 if (!Array.isArray(allStores) || (allStores[0] && !allStores[0].chain)) allStores = [];
 
+const failed = new Set();
 for (const key of keys) {
-  const stores = await engine(key).stores();
+  // Si une chaîne ne répond pas (ex. connexion refusée depuis l'étranger), on garde ses magasins d'avant.
+  let stores;
+  try { stores = await engine(key).stores(); } catch (e) { console.log(`✗ ${CHAINS[key].fr} : liste des magasins indisponible (${e.message.split('\n')[0]}) — on garde l'ancienne`); failed.add(key); continue; }
   console.log(`${CHAINS[key].fr} : ${stores.length} magasins`);
-  allStores = allStores.filter((s) => s.chain !== key).concat(stores.map((s) => ({ chain: key, ...s })));
+  // on garde le nombre d'ingrédients trouvés la dernière fois, au cas où le fichier de prix ne viendrait pas
+  const before = Object.fromEntries(allStores.filter((s) => s.chain === key).map((s) => [s.id, s.priced]));
+  allStores = allStores.filter((s) => s.chain !== key).concat(stores.map((s) => ({ chain: key, ...s, ...(before[s.id] ? { priced: before[s.id] } : {}) })));
 }
 const city = await cities(new Set(allStores.map((s) => s.cityCode)));
 const ALIASES = JSON.parse(readFileSync(path('data/city-aliases.json'), 'utf8'));
@@ -180,6 +185,7 @@ writeFileSync(storesFile, JSON.stringify(allStores, null, 0));
 
 if (!storesOnly) {
   for (const key of keys) {
+    if (failed.has(key)) continue;
     const eng = engine(key);
     const stores = allStores.filter((s) => s.chain === key);
     let ok = 0, ko = 0;

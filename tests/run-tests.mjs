@@ -86,12 +86,17 @@ const two = Plan.buildPlan(Object.assign({}, man, { meals: 14 }), data, prices, 
 t('14 repas = déjeuner + dîner', two.days.every((d) => d.meals.length === 2 && d.meals[0].slot === 'lunch'));
 
 // --- Famille ---
-const fam = Plan.buildPlan(Object.assign({}, man, { adults: 1, kids: 2, budget: Infinity }), data, prices, 42, 80);
-const famF = (2680 + 2200 + 2 * 1500) / 2680;
+t('enfant 2 ans < enfant 10 ans < ado 16 ans', Plan.childKcal(2) < Plan.childKcal(10) && Plan.childKcal(10) < Plan.childKcal(16));
+const mom = { type: 'adult', sex: 'f', age: 35, height: 165, weight: 60 };
+// 600 + 1031.25 - 175 - 161 = 1295.25 ; × 1,4 = 1813 → 1810
+t('autre adulte : Mifflin × 1,4', Plan.memberKcal(mom) === 1810, Plan.memberKcal(mom));
+const famProfile = Object.assign({}, man, { members: [mom, { type: 'child', age: 6 }, { type: 'child', age: 12 }], budget: Infinity });
+const fam = Plan.buildPlan(famProfile, data, prices, 42, 80);
+const famF = (2680 + 1810 + Plan.childKcal(6) + Plan.childKcal(12)) / 2680;
 t('facteur famille (toi + 1 adulte + 2 enfants)', Math.abs(fam.needs.fam - famF) < 0.01, fam.needs.fam);
 const m0 = fam.days[0].meals[0], k0 = Object.keys(m0.ing)[0];
 t('quantités famille = ta portion × facteur', Math.abs(m0.ing[k0] - m0.mine[k0] * famF) <= famF);
-t('ta portion (kcal) ne change pas avec la famille', m0.kcal === Plan.buildPlan(man, data, prices, 42, 80).days[0].meals.find((x) => x.id === m0.id)?.kcal || true);
+t('un adulte plus lourd mange plus', Plan.memberKcal(Object.assign({}, mom, { weight: 90 })) > Plan.memberKcal(mom));
 t('courses famille plus chères que solo', fam.shop.total > Plan.buildPlan(Object.assign({}, man, { budget: Infinity }), data, prices, 42, 80).shop.total * 2);
 t('solo : facteur 1', Plan.buildPlan(man, data, prices, 42, 40).needs.fam === 1);
 

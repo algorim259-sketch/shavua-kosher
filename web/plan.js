@@ -98,12 +98,22 @@
 
   const scaleFor = (target, kcal) => Math.min(2.2, Math.max(0.6, target / kcal));
 
-  // Famille : mêmes plats pour tout le monde, quantités multipliées.
-  // Repères moyens : un autre adulte ≈ 2 200 kcal/jour, un enfant (4–12 ans) ≈ 1 500 kcal/jour.
-  const ADULT_KCAL = 2200, CHILD_KCAL = 1500;
+  // Famille : mêmes plats pour tout le monde, quantités multipliées selon les besoins de chacun.
+  // Enfant : repères moyens par âge (kcal/jour, filles et garçons confondus, activité normale).
+  const CHILD_TABLE = [[1, 900], [3, 1100], [5, 1300], [8, 1550], [11, 1850], [13, 2100], [17, 2350]];
+  function childKcal(age) {
+    for (const [maxAge, kcal] of CHILD_TABLE) if (age <= maxAge) return kcal;
+    return 2350;
+  }
+  // Autre adulte : Mifflin-St Jeor avec son poids, sa taille, son âge, activité légère (× 1,4).
+  function adultKcal(m) {
+    const bmr = 10 * (m.weight || 70) + 6.25 * (m.height || 170) - 5 * (m.age || 35) + (m.sex === 'f' ? -161 : 5);
+    return Math.round((bmr * 1.4) / 10) * 10;
+  }
+  function memberKcal(m) { return m.type === 'child' ? childKcal(m.age || 8) : adultKcal(m); }
   function familyFactor(profile, daily) {
-    const a = Math.max(0, profile.adults || 0), k = Math.max(0, profile.kids || 0);
-    return (daily.kcal + a * ADULT_KCAL + k * CHILD_KCAL) / daily.kcal;
+    const members = Array.isArray(profile.members) ? profile.members : [];
+    return (daily.kcal + members.reduce((s, m) => s + memberKcal(m), 0)) / daily.kcal;
   }
 
   // kcal et protéines = TA portion ; ing et cost = pour toute la famille ; mine = tes grammes.
@@ -256,7 +266,7 @@
     return Object.assign({}, raw, { ingredientsById });
   }
 
-  const api = { needs, familyFactor, recipeInfo, buildPlan, swapMeal, shopping, compareStores, repriceDays, prepare, rng, SLOTS, TAGS };
+  const api = { needs, familyFactor, memberKcal, childKcal, recipeInfo, buildPlan, swapMeal, shopping, compareStores, repriceDays, prepare, rng, SLOTS, TAGS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Plan = api;
 })(typeof window !== 'undefined' ? window : this);

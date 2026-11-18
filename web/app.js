@@ -18,9 +18,10 @@
 
   let lang = store.get('lang', 'he');
   let t = T[lang];
-  const defaults = { goal: null, city: null, stores: [], meals: 21, diet: 'all', sessions: '3-4', job: 'sit', likes: {}, family: false, adults: 0, kids: 0, age: 25, height: 175, weight: 75, sex: null, budget: null, shopStore: null };
+  const defaults = { goal: null, city: null, stores: [], meals: 21, diet: 'all', sessions: '3-4', job: 'sit', likes: {}, family: false, members: [], age: 25, height: 175, weight: 75, sex: null, budget: null, shopStore: null };
   let profile = Object.assign({}, defaults, store.get('profile', {}));
   if (!Array.isArray(profile.stores)) profile.stores = [];
+  if (!Array.isArray(profile.members)) profile.members = [];
   profile.stores = profile.stores.filter((k) => STORE[k]);
   let step = 0, plan = null, tab = 'week', likeIdx = 0, cityQuery = '', minBudget = null;
   let seed = store.get('seed', 1);
@@ -122,6 +123,18 @@
   const opt = (field, value, label, desc, icon) =>
     `<button class="opt ${profile[field] === value ? 'on' : ''}" data-set="${field}" data-val="${esc(value)}">${icon ? `<i class="ico">${icon}</i>` : ''}<span class="txt"><span>${label}</span>${desc ? `<small>${desc}</small>` : ''}</span><span class="check">✓</span></button>`;
 
+  // Une carte par personne de la famille (adulte : sexe, âge, taille, poids ; enfant : âge).
+  function memberCard(m, i) {
+    const num = (f, min, max, unit) => `<label class="mini-num"><span>${t[f === 'age' ? 'age' : f].replace(/ \(.*/, '')}</span><input type="number" inputmode="numeric" min="${min}" max="${max}" value="${m[f]}" data-member="${i}" data-mf="${f}"><small>${unit}</small></label>`;
+    const head = `<div class="m-head"><b>${m.type === 'child' ? t.child : t.adult} ${i + 1}</b><span class="m-kcal">≈ ${Plan.memberKcal(m).toLocaleString('he-IL')} ${t.kcal}</span><button class="m-del" data-del="${i}" aria-label="✕">✕</button></div>`;
+    if (m.type === 'child') {
+      return `<div class="member rise">${head}<div class="m-row"><span>${t.childAge}</span><button class="pm" data-mstep="${i}" data-d="-1">−</button><b class="cnt">${m.age}</b><button class="pm plus" data-mstep="${i}" data-d="1">+</button><small>${t.years}</small></div></div>`;
+    }
+    return `<div class="member rise">${head}
+      <div class="seg"><button class="${m.sex === 'm' ? 'on' : ''}" data-msex="${i}" data-v="m">${t.male}</button><button class="${m.sex === 'f' ? 'on' : ''}" data-msex="${i}" data-v="f">${t.female}</button></div>
+      <div class="row3">${num('age', 16, 99, t.years)}${num('height', 120, 220, 'cm')}${num('weight', 30, 250, 'kg')}</div></div>`;
+  }
+
   function cityStep() {
     const c = CITY[profile.city];
     const results = searchCities(cityQuery);
@@ -172,11 +185,12 @@
       canNext = true;
     } else if (key === 'family') {
       ttl = t.q_family; desc = t.q_family_d;
-      const stepper = (f, label, d, max) => `<div class="stepper"><span class="txt"><b>${label}</b><small>${d}</small></span>
-        <button class="pm" data-step="${f}" data-d="-1" aria-label="-1">−</button><b class="cnt">${profile[f]}</b><button class="pm plus" data-step="${f}" data-d="1" data-max="${max}" aria-label="+1">+</button></div>`;
-      body = `<div class="row2">${opt('family', false, t.justMe, t.justMe_d, '●')}${opt('family', true, t.myFamily, t.myFamily_d, '●●')}</div>`
-        + (profile.family ? `<div class="family-box">${stepper('adults', t.adultsOther, t.adults_d, 6)}${stepper('kids', t.kidsLbl, t.kids_d, 8)}</div>` : '');
-      canNext = !profile.family || profile.adults + profile.kids > 0;
+      body = `<div class="row2">${opt('family', false, t.justMe, t.justMe_d, '●')}${opt('family', true, t.myFamily, t.myFamily_d, '●●')}</div>`;
+      if (profile.family) {
+        body += `<div class="family-box">${profile.members.map(memberCard).join('')}
+          <div class="row2"><button class="ghost add" data-add="adult">+ ${t.addAdult}</button><button class="ghost add" data-add="child">+ ${t.addChild}</button></div></div>`;
+      }
+      canNext = !profile.family || profile.members.length > 0;
     } else if (key === 'diet') {
       ttl = t.q_diet; desc = t.q_diet_d;
       body = opt('diet', 'all', t.diet_all, '', '✦') + opt('diet', 'kosher', t.diet_kosher, t.diet_kosher_d, '✡') + opt('diet', 'vegetarian', t.diet_vegetarian, '', '❦') + opt('diet', 'vegan', t.diet_vegan, '', '✿');
@@ -246,8 +260,8 @@
 
   // ---------- Résultat ----------
   // Le calcul ne compte les autres personnes que si « pour ma famille » est choisi.
-  const eff = () => Object.assign({}, profile, profile.family ? {} : { adults: 0, kids: 0 });
-  const persons = () => 1 + (profile.family ? profile.adults + profile.kids : 0);
+  const eff = () => Object.assign({}, profile, { members: profile.family ? profile.members : [] });
+  const persons = () => 1 + (profile.family ? profile.members.length : 0);
 
   // Prix du premier magasin, limités aux ingrédients vendus dans TOUS les magasins choisis,
   // pour que la même semaine puisse être comparée partout.
@@ -279,8 +293,9 @@
     const st = STORE[plan.shopKey];
     const head = `<section class="needs">
       <p class="chip on-dark">${t.yourDay}</p>${persons() > 1 ? `<p class="fam-chip">👪 ${t.forFamily} · ${persons()} ${t.people}</p>` : ''}
-      <p class="kcal"><b>${n.kcal.toLocaleString('he-IL')}</b> ${t.kcal}</p>
-      <div class="macros"><span><b>${n.p} ${t.g}</b>${t.prot}</span><span><b>${n.c} ${t.g}</b>${t.carbs}</span><span><b>${n.f} ${t.g}</b>${t.fat}</span></div>
+      <p class="kcal"><b data-count="${n.kcal}">${n.kcal.toLocaleString('he-IL')}</b> ${t.kcal}</p>
+      <div class="macros">${[[n.p, t.prot, n.p * 4], [n.c, t.carbs, n.c * 4], [n.f, t.fat, n.f * 9]].map(([v, l, k]) =>
+        `<span><b>${v} ${t.g}</b>${l}<span class="mbar"><i style="width:${Math.round((k / n.kcal) * 100)}%"></i></span></span>`).join('')}</div>
     </section>
     ${compareCard()}
     ${plan.overBudget ? `<p class="warn">${t.over}</p>` : ''}
@@ -296,7 +311,8 @@
     return `<section class="compare"><h3>${t.compare}</h3>
       ${plan.comp.map((c, i) => { const s = STORE[c.key]; return `<button class="cmp-row ${c.key === plan.shopKey ? 'on' : ''}" data-shop="${c.key}">
         ${chainBadge(s.chain, 'sm')}<span class="what"><b>${esc(name(DATA.chains[s.chain]))}</b><small>${esc(s.name)}</small></span>
-        ${i === 0 ? `<span class="pill-ok">${t.cheapest}</span>` : ''}<span class="cost">${nis(c.total)}</span></button>`; }).join('')}
+        ${i === 0 ? `<span class="pill-ok">${t.cheapest}</span>` : ''}<span class="cost" data-count="${Math.round(c.total * 10) / 10}" data-dec="1" data-suf=" ₪">${nis(c.total)}</span>
+        <span class="cbar"><i style="width:${Math.round((c.total / plan.comp[plan.comp.length - 1].total) * 100)}%"></i></span></button>`; }).join('')}
       ${saving >= 1 ? `<p class="save">${t.saveWeek.replace('{n}', nis(saving))}</p>` : ''}
       <p class="sub small">${t.tapToSwitch}</p></section>`;
   }
@@ -340,11 +356,36 @@
     app.innerHTML = step === 0 ? home() : step > STEPS.length ? result() : question();
     initWheels();
   }
-  function go(n) { step = n; render(); window.scrollTo(0, 0); }
+  // Les animations ne jouent qu'en changeant d'écran, pas à chaque toucher.
+  let enterTimer;
+  function go(n) {
+    step = n; app.classList.add('enter'); render(); window.scrollTo(0, 0); countUp();
+    clearTimeout(enterTimer); enterTimer = setTimeout(() => app.classList.remove('enter'), 1600);
+  }
+  // chiffres qui défilent jusqu'à leur valeur (calories, prix)
+  function countUp() {
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    app.querySelectorAll('[data-count]').forEach((el) => {
+      const to = Number(el.dataset.count), dec = Number(el.dataset.dec || 0), suf = el.dataset.suf || '';
+      const t0 = performance.now(), dur = Number(el.dataset.dur || 1100);
+      const f = (now) => { const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+        el.textContent = (to * e).toLocaleString('he-IL', { maximumFractionDigits: dec, minimumFractionDigits: 0 }) + suf; if (k < 1) requestAnimationFrame(f); };
+      requestAnimationFrame(f);
+    });
+  }
 
+  // Écran de calcul : anneau qui se remplit et étapes cochées une à une.
   function computing() {
-    app.innerHTML = `<section class="q center"><div class="spinner"></div><p class="sub">${t.computing}</p></section>`;
-    setTimeout(() => { plan = null; go(STEPS.length + 1); }, 50);
+    const items = [t.calc1, t.calc2.replace('{n}', profile.stores.length), t.calc3.replace('{n}', profile.meals), t.calc4];
+    app.innerHTML = `<section class="calc"><svg viewBox="0 0 150 150" aria-hidden="true"><circle class="track" cx="75" cy="75" r="64"/><circle class="arc" cx="75" cy="75" r="64"/></svg>
+      <p class="pct" data-count="100" data-dur="2300" data-suf="%">0%</p><h2>${t.computing}</h2>
+      <ul>${items.map((x, i) => `<li style="animation-delay:${0.35 + i * 0.5}s"><b>✓</b>${esc(x)}</li>`).join('')}</ul></section>`;
+    window.scrollTo(0, 0); countUp();
+    const t0 = Date.now();
+    loadPrices(profile.stores).then(() => {
+      plan = null; plan = computePlan();
+      setTimeout(() => go(STEPS.length + 1), Math.max(0, 2500 - (Date.now() - t0)));
+    });
   }
 
   app.addEventListener('input', (e) => {
@@ -368,7 +409,7 @@
     if (b.dataset.set) {
       const raw = b.dataset.val;
       profile[b.dataset.set] = b.dataset.num ? Number(raw) : raw === 'true' ? true : raw === 'false' ? false : raw;
-      if (b.dataset.set === 'family') { if (profile.family && profile.adults + profile.kids === 0) profile.adults = 1; profile.budget = null; }
+      if (b.dataset.set === 'family') profile.budget = null;
       if (b.dataset.set === 'diet' || b.dataset.set === 'meals') profile.budget = null;
       save();
       if (['goal', 'sex'].includes(b.dataset.set)) setTimeout(() => go(step + 1), 180);
@@ -377,12 +418,18 @@
     }
     if (b.dataset.like) {
       profile.likes = Object.assign({}, profile.likes, { [Plan.TAGS[likeIdx]]: b.dataset.like === '1' });
-      save(); likeIdx++; render(); return;
+      save(); likeIdx++; render(); const cl = app.querySelector('.card-like'); if (cl) cl.classList.add('next'); return;
     }
-    if (b.dataset.step) {
-      const f = b.dataset.step, max = Number(b.dataset.max || 9);
-      profile[f] = Math.min(max, Math.max(0, profile[f] + Number(b.dataset.d))); profile.budget = null; save(); render(); return;
+    if (b.dataset.add) {
+      profile.members.push(b.dataset.add === 'child' ? { type: 'child', age: 8 } : { type: 'adult', sex: profile.sex === 'f' ? 'm' : 'f', age: 35, height: 168, weight: 68 });
+      profile.budget = null; save(); render(); return;
     }
+    if (b.dataset.del) { profile.members.splice(Number(b.dataset.del), 1); profile.budget = null; save(); render(); return; }
+    if (b.dataset.mstep) {
+      const m = profile.members[Number(b.dataset.mstep)];
+      m.age = Math.min(17, Math.max(1, m.age + Number(b.dataset.d))); profile.budget = null; save(); render(); return;
+    }
+    if (b.dataset.msex) { profile.members[Number(b.dataset.msex)].sex = b.dataset.v; profile.budget = null; save(); render(); return; }
     if (b.dataset.bud) {
       profile.budget = Math.max(50, profile.budget + Number(b.dataset.bud)); save();
       const dial = document.querySelector('.dial'); if (dial) { dial.outerHTML = budgetDial().split('<div class="pmrow">')[0]; }
@@ -406,9 +453,15 @@
   });
 
   app.addEventListener('change', (e) => {
+    if (e.target.dataset.member) {
+      const m = profile.members[Number(e.target.dataset.member)], v = Number(e.target.value);
+      if (m && v > 0) { m[e.target.dataset.mf] = v; profile.budget = null; save(); render(); }
+      return;
+    }
     const tick = e.target.dataset.tick;
     if (tick) { const tk = store.get('ticked', {}); tk[tick] = e.target.checked; store.set('ticked', tk); e.target.closest('li').classList.toggle('done', e.target.checked); }
   });
 
   setLang(lang);
+  go(0);
 })();

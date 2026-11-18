@@ -12,8 +12,10 @@ let ok = 0, ko = 0;
 const t = (name, cond, extra = '') => { if (cond) ok++; else { ko++; console.log(`✗ ${name} ${extra}`); } };
 
 const data = Plan.prepare({ ingredients: read('data/ingredients.json'), recipes: read('data/recipes.json') });
-const priceFiles = readdirSync(new URL('data/prices/', root)).filter((f) => f.endsWith('.json'));
-const prices = read(`data/prices/${priceFiles[0]}`).products;
+const priceFiles = readdirSync(new URL('web/prices/', root)).filter((f) => f.endsWith('.json'));
+const full = priceFiles.map((f) => read(`web/prices/${f}`).products).filter((p) => data.ingredients.every((i) => p[i.id]));
+const prices = full[0];
+t('au moins un magasin avec tous les ingrédients', !!prices);
 
 // --- Besoins (Mifflin-St Jeor) ---
 const man = { sex: 'm', age: 25, height: 178, weight: 75, job: 'sit', sessions: '3-4', goal: 'gain', meals: 21, diet: 'all', budget: 400 };
@@ -64,6 +66,20 @@ const swapped = Plan.swapMeal(plan, man, data, prices, 0, 1, 99);
 t('remplacer un repas', swapped.days[0].meals[1].id !== plan.days[0].meals[1].id && swapped.days[1] === plan.days[1]);
 const two = Plan.buildPlan(Object.assign({}, man, { meals: 14 }), data, prices, 5, 100);
 t('14 repas = déjeuner + dîner', two.days.every((d) => d.meals.length === 2 && d.meals[0].slot === 'lunch'));
+
+// --- Comparaison des magasins ---
+const cmp = Plan.compareStores(plan.days, data, { a: prices, b: full[1] || prices, c: {} });
+t('comparaison : magasin incomplet écarté', cmp.length === 2 && !cmp.find((x) => x.key === 'c'));
+t('comparaison triée du moins cher au plus cher', cmp[0].total <= cmp[1].total);
+const rp = Plan.repriceDays(plan.days, data, prices);
+t('prix des repas recalculés', rp[0].meals[0].cost > 0 && rp[0].meals.length === plan.days[0].meals.length);
+
+// --- Magasins et distances ---
+const { parseStoresXml, km, decodeFile } = await import('../scripts/prices-lib.mjs');
+const st = parseStoresXml('<Root><Store><StoreID>039</StoreID><StoreName>חדרה</StoreName><Address>הנשיא 1</Address><City>6500</City></Store></Root>');
+t('lecture des magasins', st.length === 1 && st[0].id === 39 && st[0].cityCode === '6500');
+t('UTF-16 décodé', decodeFile(Buffer.from('﻿<a>שלום</a>', 'utf16le'), (b) => b) === '<a>שלום</a>');
+t('distance Hadera – Or Akiva ≈ 8 km', Math.abs(km({ lat: 32.434, lon: 34.919 }, { lat: 32.507, lon: 34.918 }) - 8) < 1.5);
 
 console.log(`\n${ok} réussis, ${ko} ratés`);
 console.log(`Exemple : ${plan.needs.kcal} kcal/jour, semaine à ${plan.shop.total} ₪ (minimum ${plan.minBudget} ₪), protéines ${plan.protein} % de l'objectif`);

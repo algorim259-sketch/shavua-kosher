@@ -35,11 +35,14 @@ export function packGrams(item, ing) {
   const u = item.unit;
   if (/קילו|ק"ג|ליטר/.test(u) && !/מיליליטר/.test(u)) return item.qty * 1000;
   if (/גרם|מיליליטר|מ"ל/.test(u)) return item.qty;
-  if (/יחיד/.test(u) && ing.unitG) {
+  if (/יחיד/.test(u)) {
+    if (!ing.unitG) return null;
     const n = item.name.match(/(\d+)\s*יח/);
-    const count = n ? parseInt(n[1], 10) : 0;
+    const count = n ? parseInt(n[1], 10) : item.qty > 1 ? item.qty : 0;
     return count > 1 ? count * ing.unitG : null;
   }
+  // Unité inconnue (Osher Ad : « לא ידוע ») : un petit nombre = kilos ou litres, sinon grammes.
+  if (item.qty > 0) return item.qty <= 10 ? item.qty * 1000 : item.qty;
   return null;
 }
 
@@ -57,6 +60,7 @@ export function pickProducts(items, ingredients) {
       if (ing.onlyWeighted && !it.weighted) continue;
       const g = packGrams(it, ing);
       if (!g || g < (ing.minPackG || 0)) continue;
+      if (!it.weighted && g > (ing.maxPackG || 2000)) continue; // pas de seau de 3 kg pour une semaine
       const perKg = (it.price / g) * 1000;
       if (ing.maxPerKg && perKg > ing.maxPerKg) continue;
       if (!best || perKg < best.perKg) {
@@ -66,4 +70,32 @@ export function pickProducts(items, ingredients) {
     if (best) out[ing.id] = best;
   }
   return out;
+}
+
+// Décompresse si besoin et décode (certaines chaînes écrivent en UTF-16).
+export function decodeFile(buf, gunzip) {
+  if (buf[0] === 0x1f && buf[1] === 0x8b) buf = gunzip(buf);
+  if (buf[0] === 0xff && buf[1] === 0xfe) return buf.subarray(2).toString('utf16le');
+  return buf.toString('utf8').replace(/^﻿/, '');
+}
+
+// Liste des magasins d'une chaîne (fichier « Stores »). City = code officiel de la ville.
+export function parseStoresXml(xml) {
+  const out = [];
+  const re = /<(?:Store|STORE)>([\s\S]*?)<\/(?:Store|STORE)>/g;
+  let m;
+  while ((m = re.exec(xml))) {
+    const b = m[1];
+    const id = parseInt(tag(b, 'StoreID') || tag(b, 'STOREID'), 10);
+    if (!id && id !== 0) continue;
+    out.push({ id, name: tag(b, 'StoreName') || tag(b, 'STORENAME'), address: tag(b, 'Address') || tag(b, 'ADDRESS'), cityCode: (tag(b, 'City') || tag(b, 'CITY')).replace(/^0+/, '') });
+  }
+  return out;
+}
+
+// Distance en km entre deux points (formule de haversine).
+export function km(a, b) {
+  const r = (x) => (x * Math.PI) / 180;
+  const d = Math.sin(r(b.lat - a.lat) / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(r(b.lon - a.lon) / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(d));
 }

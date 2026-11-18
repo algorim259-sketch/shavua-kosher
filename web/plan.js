@@ -218,13 +218,33 @@
     return Object.assign({}, plan, { days, shop, protein: Math.round(score(days, daily, profile) * 100), overBudget: shop.total > profile.budget });
   }
 
+  // Même semaine, même liste : combien ça coûte dans chaque magasin ?
+  // pricesByStore = { cléMagasin: prix } ; un magasin à qui il manque un ingrédient est écarté.
+  function compareStores(days, data, pricesByStore) {
+    const need = new Set();
+    for (const d of days) for (const m of d.meals) for (const k of Object.keys(m.ing)) need.add(k);
+    const out = [];
+    for (const [key, prices] of Object.entries(pricesByStore)) {
+      if (!prices || ![...need].every((k) => prices[k])) continue;
+      out.push({ key, total: shopping(days, data, prices).total });
+    }
+    return out.sort((a, b) => a.total - b.total);
+  }
+
+  // Coût de chaque repas recalculé avec les prix d'un autre magasin.
+  function repriceDays(days, data, prices) {
+    return days.map((d) => ({ meals: d.meals.map((m) => Object.assign({}, m, {
+      cost: Math.round(Object.entries(m.ing).reduce((s, [k, g]) => s + (prices[k].perKg * g) / 1000, 0) * 100) / 100,
+    })) }));
+  }
+
   function prepare(raw) {
     const ingredientsById = {};
     for (const i of raw.ingredients) ingredientsById[i.id] = i;
     return Object.assign({}, raw, { ingredientsById });
   }
 
-  const api = { needs, recipeInfo, buildPlan, swapMeal, shopping, prepare, rng, SLOTS, TAGS };
+  const api = { needs, recipeInfo, buildPlan, swapMeal, shopping, compareStores, repriceDays, prepare, rng, SLOTS, TAGS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Plan = api;
 })(typeof window !== 'undefined' ? window : this);

@@ -1,6 +1,6 @@
 # Met le site en ligne sur GitHub Pages.
 # - à chaque envoi sur la branche main ;
-# - chaque nuit vers 4 h (heure d'Israël) avec les prix du jour ;
+# - chaque nuit vers 3 h en hiver, 4 h en été (heure d'Israël) avec les prix du jour ;
 # - à la main depuis l'onglet « Actions » (bouton « Run workflow »).
 # Si les sites des chaînes refusent la connexion, le site reste en ligne avec les derniers prix enregistrés.
 name: Site en ligne

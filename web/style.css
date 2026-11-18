@@ -307,7 +307,9 @@ h1 em, .qt em { font-family: inherit; font-style: normal; font-weight: 800; colo
 @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes page { from { opacity: 0; transform: translateX(var(--dx, -18px)); } to { opacity: 1; transform: none; } }
 [dir="ltr"] { --dx: 18px; }
-#app.enter > section:first-child, #app.enter .q { animation: page .35s var(--ease) both; }
+/* on anime le contenu de la question, jamais le bloc entier : sinon le bouton fixé en bas
+   se place par rapport au bloc qui glisse et « saute » à la fin de l'animation */
+#app.enter > section:first-child:not(.q), #app.enter .q > :not(.sticky) { animation: page .35s var(--ease) both; }
 #app.enter .opts > *, #app.enter .stores > *, #app.enter .family-box > *, #app.enter .day, #app.enter .compare, #app.enter .needs, #app.enter .tabs, #app.enter .strip figure, #app.enter .steps li { animation: rise .5s var(--ease) both; }
 #app.enter .opts > *:nth-child(2), #app.enter .stores > *:nth-child(2), #app.enter .family-box > *:nth-child(2), #app.enter .steps li:nth-child(2), #app.enter .strip figure:nth-child(2) { animation-delay: .06s; }
 #app.enter .opts > *:nth-child(3), #app.enter .stores > *:nth-child(3), #app.enter .family-box > *:nth-child(3), #app.enter .steps li:nth-child(3), #app.enter .strip figure:nth-child(3) { animation-delay: .12s; }

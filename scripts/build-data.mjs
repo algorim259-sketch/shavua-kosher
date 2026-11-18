@@ -35,3 +35,12 @@ const data = { ingredients: read('data/ingredients.json'), recipes: read('data/r
 writeFileSync(new URL('web/data.js', root), `window.DATA = ${JSON.stringify(data)};\n`);
 const per = Object.keys(CHAINS).map((k) => `${CHAINS[k].fr} ${stores.filter((s) => s.chain === k).length}`).join(', ');
 console.log(`web/data.js : ${data.recipes.length} recettes, ${cities.length} villes, ${stores.length} magasins (${per})`);
+
+// Numéro de version sur les fichiers du site : à chaque mise à jour, les navigateurs
+// rechargent les nouveaux fichiers au lieu de garder l'ancienne version en mémoire.
+const stamp = Date.now().toString(36);
+const indexUrl = new URL('web/index.html', root);
+const html = readFileSync(indexUrl, 'utf8').replace(/((?:src|href)="(?:style\.css|data\.js|i18n\.js|plan\.js|app\.js))(?:\?v=[^"]*)?"/g, `$1?v=${stamp}"`);
+writeFileSync(indexUrl, html);
+writeFileSync(new URL('web/data.js', root), readFileSync(new URL('web/data.js', root), 'utf8').replace(/;\n$/, `;\nwindow.DATA.v = '${stamp}';\n`));
+console.log(`Version du site : ${stamp}`);

@@ -39,7 +39,7 @@
 
   async function loadPrices(keys) {
     await Promise.all(keys.filter((k) => PRICES[k] === undefined).map(async (k) => {
-      try { PRICES[k] = (await (await fetch(`prices/${k}.json`)).json()).products; } catch (e) { PRICES[k] = null; }
+      try { PRICES[k] = (await (await fetch(`prices/${k}.json?v=${DATA.v || ""}`)).json()).products; } catch (e) { PRICES[k] = null; }
     }));
   }
 

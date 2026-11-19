@@ -49,7 +49,7 @@ npm test
 
 ## Réglages
 
-- Prix de l'abonnement : `PRICE` dans `web/app.js` (39 ₪). `TEST_MODE = true` : tout est gratuit.
+- Abonnement : `SHOW_PRICING = false` dans `web/app.js` = rien d'affiché (phase de test avec des amis). Le remettre à `true` pour afficher l'offre à `PRICE` (39 ₪ par mois).
 - Rayon de recherche des magasins : `RADIUS_KM` dans `web/app.js` (25 km).
 - Ajouter une chaîne : `CHAINS` dans `scripts/fetch-prices.mjs` et `scripts/build-data.mjs`.
 

@@ -2,6 +2,7 @@
 (function () {
   'use strict';
   const TEST_MODE = true;   // tant que le paiement n'existe pas : tout est gratuit
+  const SHOW_PRICING = false; // false = aucun abonnement affiché (tests avec des amis) ; true pour le remettre
   const PRICE = 39;         // ₪ par mois
   const RADIUS_KM = 25;     // magasins proposés autour de la ville
   const WHEEL_H = 44;       // hauteur d'une ligne des roues âge / taille / poids
@@ -207,6 +208,7 @@
   });
 
   function priceCard() {
+    if (!SHOW_PRICING) return '';
     return `<section class="price">
       <p class="chip">${t.priceTitle}</p>
       <p class="amount"><span>${PRICE}</span> ${t.perMonth}</p>

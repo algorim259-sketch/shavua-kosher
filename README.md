@@ -81,7 +81,7 @@ Adresse : https://algorim259-sketch.github.io/shavua-kosher/
 
 `.github/workflows/site.yml` publie le dossier `web/` :
 - à chaque `git push` sur `main` ;
-- chaque nuit vers 3 h en hiver, 4 h en été (heure d'Israël) après avoir récupéré les prix du jour (et les enregistre dans le dépôt) ;
+- chaque matin vers 7 h en hiver, 8 h en été (heure d'Israël), quand toutes les chaînes ont publié (Osher Ad et Victory publient vers 5-6 h), après avoir récupéré les prix du jour (et les enregistre dans le dépôt) ;
 - à la main : onglet **Actions** → « Site en ligne » → **Run workflow**.
 
 Si une chaîne refuse la connexion depuis les serveurs de GitHub, ses derniers prix connus restent en ligne.

@@ -25,6 +25,7 @@
   if (!Array.isArray(profile.members)) profile.members = [];
   profile.stores = profile.stores.filter((k) => STORE[k]);
   let step = 0, plan = null, tab = 'week', likeIdx = 0, cityQuery = '', minBudget = null;
+  let picker = null; // repas dont on montre les 3 plats au choix : { d: jour, m: repas, seed }
   let seed = store.get('seed', 1);
   const PRICES = {};
 
@@ -430,7 +431,21 @@
         <ul class="ing">${Object.entries(m.ing).map(([k, g]) => `<li>${esc(name(DATA.ingredientsById[k]))} <b>${qty(k, g)}</b></li>`).join('')}</ul>
         ${persons() > 1 && m.mine ? `<p class="mine">${t.yourPortion} ${Object.entries(m.mine).map(([k, g]) => `${esc(name(DATA.ingredientsById[k]))} ${qty(k, g)}`).join(' · ')}</p>` : ''}
         <button class="swap" data-swap="${di},${mi}">⇄ ${t.swap}</button></div>
+        ${picker && picker.d === di && picker.m === mi ? choicesBox(di, mi) : ''}
       </article>`).join('')}</section>`).join('');
+  }
+
+  // 3 plats au choix pour remplacer un repas (prix au magasin choisi pour les courses)
+  function choicesBox(di, mi) {
+    const shopPrices = PRICES[plan.shopKey] || {};
+    const cost = (m) => Object.entries(m.ing).reduce((s, [k, g]) => s + (shopPrices[k] ? (shopPrices[k].perKg * g) / 1000 : 0), 0);
+    const opts = Plan.mealOptions(plan, eff(), DATA, planPrices(), di, mi, 3, picker.seed);
+    return `<div class="choices"><p class="choices-h">${t.chooseMeal}</p>
+      ${opts.map((o) => `<button class="choice" data-choose="${di},${mi},${o.id}">
+        ${RECIPE[o.id] && RECIPE[o.id].img ? `<img src="${img(RECIPE[o.id].img, 160, 160)}" alt="">` : ''}
+        <span class="what"><b>${esc(name(o))}</b><small>${o.p} ${t.g} ${t.prot} · ${o.min} ${t.min} · ${o.kcal} ${t.kcal}</small></span>
+        <span class="cost">${nis(cost(o))}</span></button>`).join('')}
+      <div class="choices-act"><button class="ghost" data-more="1">↻ ${t.moreIdeas}</button><button class="ghost" data-close-picker="1">${t.closePicker}</button></div></div>`;
   }
 
   function listView() {
@@ -476,6 +491,7 @@
 
   // Écran de calcul : anneau qui se remplit et étapes cochées une à une.
   function computing() {
+    picker = null;
     const items = [t.calc1, t.calc2.replace('{n}', profile.stores.length), t.calc3.replace('{n}', profile.meals), t.calc4];
     app.innerHTML = `<section class="calc"><svg viewBox="0 0 150 150" aria-hidden="true"><circle class="track" cx="75" cy="75" r="64"/><circle class="arc" cx="75" cy="75" r="64"/></svg>
       <p class="pct" data-count="100" data-dur="2300" data-suf="%">0%</p><h2>${t.computing}</h2>
@@ -538,10 +554,19 @@
     }
     if (b.dataset.tab) { tab = b.dataset.tab; render(); return; }
     if (b.dataset.swap) {
+      // ouvre (ou ferme) les 3 plats au choix sous ce repas
       const [di, mi] = b.dataset.swap.split(',').map(Number);
       const y = window.scrollY;
-      plan = withShop(Plan.swapMeal(plan, eff(), DATA, planPrices(), di, mi, Date.now() & 0xffff));
+      picker = picker && picker.d === di && picker.m === mi ? null : { d: di, m: mi, seed: (Date.now() & 0xffff) || 1 };
       render(); window.scrollTo(0, y); return;
+    }
+    if (b.dataset.more) { const y = window.scrollY; picker.seed += 1; render(); window.scrollTo(0, y); return; }
+    if (b.dataset.closePicker) { const y = window.scrollY; picker = null; render(); window.scrollTo(0, y); return; }
+    if (b.dataset.choose) {
+      const [di, mi, id] = b.dataset.choose.split(',');
+      const y = window.scrollY;
+      plan = withShop(Plan.chooseMeal(plan, eff(), DATA, planPrices(), Number(di), Number(mi), id));
+      picker = null; render(); window.scrollTo(0, y); return;
     }
     const act = b.dataset.act;
     if (act === 'start') { likeIdx = 0; go(1); }

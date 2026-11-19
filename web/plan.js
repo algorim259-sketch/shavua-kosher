@@ -240,6 +240,39 @@
     return Object.assign({}, plan, { days, shop, protein: Math.round(score(days, daily, profile) * 100), overBudget: shop.total > profile.budget });
   }
 
+  // Plats proposés à la place d'un repas : n recettes du même type (petit-déj ou plat),
+  // jamais le plat actuel, de préférence pas déjà 2 fois dans la semaine,
+  // les mieux notées selon les goûts d'abord, avec un peu de hasard (graine) pour « d'autres idées ».
+  function mealOptions(plan, profile, data, prices, dayIdx, mealIdx, n, seed) {
+    n = n || 3;
+    const daily = plan.needs;
+    const m = plan.days[dayIdx].meals[mealIdx];
+    const kind = m.slot === 'breakfast' ? 'breakfast' : 'main';
+    const share = (SLOTS[profile.meals] || SLOTS[21]).find((s) => s[0] === m.slot)[1];
+    const used = {};
+    plan.days.forEach((d) => d.meals.forEach((x) => { used[x.id] = (used[x.id] || 0) + 1; }));
+    const rand = rng(seed || 1);
+    const list = candidates(profile, data, prices)[kind]
+      .filter((c) => c.r.id !== m.id)
+      .map((c) => ({ c, s: c.w * (0.6 + rand() * 0.8) - ((used[c.r.id] || 0) >= 2 ? 10 : 0) }))
+      .sort((a, b) => b.s - a.s)
+      .slice(0, n);
+    return list.map(({ c }) => makeMeal(c, m.slot, share, daily));
+  }
+
+  // Remplacer un repas par la recette choisie par la personne.
+  function chooseMeal(plan, profile, data, prices, dayIdx, mealIdx, recipeId) {
+    const daily = plan.needs;
+    const m = plan.days[dayIdx].meals[mealIdx];
+    const kind = m.slot === 'breakfast' ? 'breakfast' : 'main';
+    const share = (SLOTS[profile.meals] || SLOTS[21]).find((s) => s[0] === m.slot)[1];
+    const c = candidates(profile, data, prices)[kind].find((x) => x.r.id === recipeId);
+    if (!c) return plan;
+    const days = plan.days.map((d, i) => (i !== dayIdx ? d : { meals: d.meals.map((x, j) => (j === mealIdx ? makeMeal(c, m.slot, share, daily) : x)) }));
+    const shop = shopping(days, data, prices);
+    return Object.assign({}, plan, { days, shop, protein: Math.round(score(days, daily, profile) * 100), overBudget: shop.total > profile.budget });
+  }
+
   // Même semaine, même liste : combien ça coûte dans chaque magasin ?
   // pricesByStore = { cléMagasin: prix } ; un magasin à qui il manque un ingrédient est écarté.
   function compareStores(days, data, pricesByStore) {
@@ -266,7 +299,7 @@
     return Object.assign({}, raw, { ingredientsById });
   }
 
-  const api = { needs, familyFactor, memberKcal, childKcal, recipeInfo, buildPlan, swapMeal, shopping, compareStores, repriceDays, prepare, rng, SLOTS, TAGS };
+  const api = { needs, familyFactor, memberKcal, childKcal, recipeInfo, buildPlan, swapMeal, mealOptions, chooseMeal, shopping, compareStores, repriceDays, prepare, rng, SLOTS, TAGS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Plan = api;
 })(typeof window !== 'undefined' ? window : this);

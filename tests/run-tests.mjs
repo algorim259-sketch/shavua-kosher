@@ -82,6 +82,23 @@ const poor = Plan.buildPlan(Object.assign({}, man, { budget: 50 }), data, prices
 t('budget trop bas signalé', poor.overBudget === true);
 const swapped = Plan.swapMeal(plan, man, data, prices, 0, 1, 99);
 t('remplacer un repas', swapped.days[0].meals[1].id !== plan.days[0].meals[1].id && swapped.days[1] === plan.days[1]);
+
+// --- Choisir parmi 3 plats ---
+const cur = plan.days[0].meals[1];
+const opts = Plan.mealOptions(plan, man, data, prices, 0, 1, 3, 5);
+t('3 plats proposés', opts.length === 3, opts.length);
+t('jamais le plat actuel dans les choix', opts.every((o) => o.id !== cur.id));
+t('3 plats différents', new Set(opts.map((o) => o.id)).size === 3);
+t('même type de repas (midi reste un plat)', opts.every((o) => o.slot === cur.slot && data.recipes.find((r) => r.id === o.id).meal === 'main'));
+t('« d\'autres idées » propose d\'autres plats', [6, 7, 8, 9].some((sd) => JSON.stringify(Plan.mealOptions(plan, man, data, prices, 0, 1, 3, sd).map((o) => o.id)) !== JSON.stringify(opts.map((o) => o.id))));
+const bOpts = Plan.mealOptions(plan, man, data, prices, 0, 0, 3, 5);
+t('petit-déjeuner : choix parmi les petits-déjeuners', bOpts.length > 0 && bOpts.every((o) => data.recipes.find((r) => r.id === o.id).meal === 'breakfast'));
+const chosen = Plan.chooseMeal(plan, man, data, prices, 0, 1, opts[2].id);
+t('le plat choisi remplace le repas', chosen.days[0].meals[1].id === opts[2].id && chosen.days[0].meals[0] === plan.days[0].meals[0] && chosen.days[1] === plan.days[1]);
+t('les courses tiennent compte du plat choisi', Object.keys(opts[2].ing).every((k) => chosen.shop.lines.some((l) => l.id === k)));
+t('recette inconnue : rien ne change', Plan.chooseMeal(plan, man, data, prices, 0, 1, 'nexiste-pas') === plan);
+const veg = Plan.buildPlan(Object.assign({}, man, { diet: 'vegan' }), data, prices, 7, 60);
+t('végan : choix uniquement végans', Plan.mealOptions(veg, Object.assign({}, man, { diet: 'vegan' }), data, prices, 0, 1, 3, 1).every((o) => Plan.recipeInfo(data.recipes.find((r) => r.id === o.id), data.ingredientsById).vegan));
 const two = Plan.buildPlan(Object.assign({}, man, { meals: 14 }), data, prices, 5, 100);
 t('14 repas = déjeuner + dîner', two.days.every((d) => d.meals.length === 2 && d.meals[0].slot === 'lunch'));
 

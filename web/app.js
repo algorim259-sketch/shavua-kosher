@@ -87,60 +87,124 @@
   // ---------- Accueil ----------
   // ---------- Accueil ----------
   let refPrices = null; // prix d'un magasin de référence pour afficher « ₪ la portion » sur l'accueil
+  const tt = (str) => { const [a, b] = str.split('|'); return b == null ? esc(a) : `${esc(a)}<em>${esc(b)}</em>`; };
+
+  // Petits écrans de téléphone animés pour les 3 étapes
+  function phone(kind) {
+    const R = DATA.recipes;
+    if (kind === 1) {
+      return `<div class="phone"><div class="ph-top"><span>01/10</span><i></i></div>
+        <p class="ph-q">${tt(t.q_goal)}</p>
+        ${['lose', 'gain', 'fit'].map((g, i) => `<div class="ph-opt${i === 1 ? ' on' : ''}" style="--d:${i}"><span>${t['goal_' + g]}</span><b>${i === 1 ? '✓' : ''}</b></div>`).join('')}
+        <div class="ph-cta">${t.next}</div></div>`;
+    }
+    if (kind === 2) {
+      const lines = [t.calc1, t.calc2.replace('{n}', 5), t.calc3.replace('{n}', 21), t.calc4];
+      return `<div class="phone center"><svg class="ph-ring" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42"/><circle class="arc" cx="50" cy="50" r="42"/></svg>
+        <p class="ph-pct">72%</p>
+        ${lines.map((x, i) => `<div class="ph-check${i < 3 ? ' ok' : ''}" style="--d:${i}"><b>${i < 3 ? '✓' : ''}</b><span>${esc(x)}</span></div>`).join('')}</div>`;
+    }
+    const meals = ['porridge', 'chicken-rice-broccoli', 'tuna-pasta'].map((id) => R.find((x) => x.id === id)).filter(Boolean);
+    return `<div class="phone"><p class="ph-hi">${esc(t.mockHi)}</p>
+      <div class="ph-day"><b>2,650</b><span>${t.kcal}</span><i><em></em></i></div>
+      <p class="ph-sub">${t.mockMenu}</p>
+      ${meals.map((r, i) => `<div class="ph-meal" style="--d:${i}"><img src="${img(r.img, 80, 80)}" alt=""><span>${esc(name(r))}</span><b>✓</b></div>`).join('')}</div>`;
+  }
+
   function home() {
     const hasPlan = profile.goal && profile.stores.length && profile.sex && profile.budget;
     const R = DATA.recipes;
     const half = Math.ceil(R.length / 2);
-    const card = (r) => {
+    const card = (r, dark) => {
       const info = Plan.recipeInfo(r, DATA.ingredientsById, refPrices);
-      return `<figure class="rcard"><img src="${img(r.img, 360, 260)}" alt="" loading="lazy">
-        <figcaption><b>${esc(name(r))}</b><span>${Math.round(info.p)} ${t.g} ${t.prot} · ${r.min} ${t.min}${refPrices && info.cost ? ` · <em>${nis(info.cost)}</em>` : ''}</span></figcaption></figure>`;
+      return `<figure class="rcard${dark ? ' dark' : ''}"><img src="${img(r.img, 360, 260)}" alt="" loading="lazy">
+        <figcaption><b>${esc(name(r))}</b><span class="pills"><i class="p">${Math.round(info.p)} ${t.g} ${t.prot}</i><i>${r.min} ${t.min}</i>${refPrices && info.cost ? `<i>${nis(info.cost)}</i>` : ''}</span></figcaption></figure>`;
     };
     // chaque rangée est répétée deux fois pour défiler sans coupure
-    const row = (list, dir) => `<div class="marquee ${dir}"><div class="track">${list.map(card).join('')}${list.map(card).join('')}</div></div>`;
+    const row = (list, dir) => `<div class="marquee food ${dir}"><div class="track">${list.map((r) => card(r, dir === 'rev')).join('')}${list.map((r) => card(r, dir === 'rev')).join('')}</div></div>`;
     const cities = new Set(DATA.stores.map((s) => s.cityCode)).size;
     if (!refPrices && DATA.stores.length) {
       const ref = DATA.stores.find((s) => s.chain === 'ramilevy') || DATA.stores[0];
-      loadPrices([ref.key]).then(() => { refPrices = PRICES[ref.key]; if (step === 0) { app.querySelectorAll('.marquee').forEach((m, i) => { m.outerHTML = row(i ? R.slice(half) : R.slice(0, half), i ? 'rev' : 'fwd'); }); } });
+      loadPrices([ref.key]).then(() => {
+        refPrices = PRICES[ref.key];
+        if (step === 0) app.querySelectorAll('.marquee.food').forEach((m, i) => { m.outerHTML = row(i ? R.slice(half) : R.slice(0, half), i ? 'rev' : 'fwd'); });
+      });
     }
+    // photos rondes et bulles d'infos qui flottent autour du titre
+    const floats = ['shakshuka', 'salmon-rice', 'chicken-pita', 'yogurt-bowl', 'mujadara', 'bolognese', 'tofu-quinoa', 'protein-pancakes']
+      .map((id, i) => { const r = R.find((x) => x.id === id); return r ? `<img class="fl f${i + 1}" src="${img(r.img, 220, 220)}" alt="">` : ''; }).join('');
+    const chips = [['c1', '🔥', t.chipKcal], ['c2', '💪', t.chipProt], ['c3', '↓', t.chipSave], ['c4', '₪', t.chipMeal], ['c5', '🛒', t.chipWeek]]
+      .map(([c, ic, x]) => `<span class="chipf ${c}"><b>${ic}</b>${esc(x)}</span>`).join('');
+    const stepBlock = (n, rev) => `<div class="step${rev ? ' rev' : ''}" data-reveal>
+        <div class="step-txt"><p class="step-tag"><b>0${n}</b>${t['s' + n + 'tag']}</p><h3>${tt(t['s' + n + 'title'])}</h3><p>${t['s' + n + 'text']}</p>
+        <div class="step-pills">${t['s' + n + 'pills'].map((x) => `<span>${esc(x)}</span>`).join('')}</div></div>
+        <div class="step-ph">${phone(n)}</div></div>`;
+    const logoRow = Object.keys(DATA.chains).map((k) => `<span class="logo-tile"><img src="${LOGOS[k]}" alt="${esc(name(DATA.chains[k]))}"></span>`).join('');
     return `
-    <section class="hero2">
-      <p class="eyebrow"><span class="dot"></span>${t.heroTag}</p>
-      <h1 class="hook">${esc(t.hook1)}<br><em>${esc(t.hook2)}</em></h1>
-      <p class="sub">${t.heroSub}</p>
-      <button class="cta" data-act="start"><span>${t.start}</span><span class="cta-arrow arrow">←</span></button>
-      <p class="note">${t.heroNote}</p>
-      ${hasPlan ? `<button class="ghost" data-act="mine">${t.see}</button>` : ''}
+    <section class="hero3">
+      <div class="floats" aria-hidden="true">${floats}${chips}</div>
+      <div class="hero-in">
+        <p class="eyebrow"><span class="dot"></span>${t.heroTag}</p>
+        <h1 class="hook">${esc(t.hook1)}<br><em>${esc(t.hook2)}</em></h1>
+        <p class="sub">${t.heroSub}</p>
+        <button class="cta" data-act="start"><span>${t.start}</span><span class="cta-arrow arrow">←</span></button>
+        <p class="note">${t.heroNote}</p>
+        ${hasPlan ? `<button class="ghost" data-act="mine">${t.see}</button>` : ''}
+      </div>
     </section>
-    <section class="logos">
+    <section class="logos" data-reveal>
       <p>${t.logosTitle.replace('{n}', DATA.stores.length)}</p>
-      <div class="logo-row">${Object.keys(DATA.chains).map((k) => `<span class="logo-tile"><img src="${LOGOS[k]}" alt="${esc(name(DATA.chains[k]))}"></span>`).join('')}</div>
+      <div class="marquee logos-m"><div class="track">${logoRow}${logoRow}${logoRow}${logoRow}</div></div>
     </section>
-    <section class="recipes">
-      <h2>${t.recipesTitle.replace('{n}', R.length)}</h2>
+    <section class="dark-band" id="how">
+      <div class="band-head" data-reveal><p class="kicker">${t.howEyebrow}</p><h2>${tt(t.howTitle)}</h2><p>${t.howSub}</p></div>
+      ${stepBlock(1)}${stepBlock(2, true)}${stepBlock(3)}
+      <div class="center" data-reveal><button class="cta inline" data-act="start"><span>${t.start}</span><span class="cta-arrow arrow">←</span></button></div>
+    </section>
+    <section class="recipes" id="recipes">
+      <div class="band-head light" data-reveal><p class="kicker">${t.statRecipes}</p><h2>${t.recipesTitle.replace('{n}', R.length)}</h2></div>
       ${row(R.slice(0, half), 'fwd')}${row(R.slice(half), 'rev')}
     </section>
-    <section class="stats">
+    <section class="stats" data-reveal>
       <div><b data-count="${DATA.stores.length}">${DATA.stores.length}</b><span>${t.statStores}</span></div>
       <div><b data-count="${Object.keys(DATA.chains).length}">${Object.keys(DATA.chains).length}</b><span>${t.statChains}</span></div>
       <div><b data-count="${cities}">${cities}</b><span>${t.statCities}</span></div>
       <div><b data-count="${R.length}">${R.length}</b><span>${t.statRecipes}</span></div>
     </section>
-    <section class="how">
-      <h2>${t.how}</h2>
-      <ol class="steps">
-        <li><b>01</b><h3>${t.step1}</h3><p>${t.step1d}</p></li>
-        <li><b>02</b><h3>${t.step2}</h3><p>${t.step2d}</p></li>
-        <li><b>03</b><h3>${t.step3}</h3><p>${t.step3d}</p></li>
-      </ol>
+    <section class="faq" id="faq">
+      <div class="band-head light" data-reveal><p class="kicker">${t.faqEyebrow}</p><h2>${tt(t.faqTitle)}</h2></div>
+      ${t.faq.map(([q, a], i) => `<details data-reveal${i === 0 ? ' open' : ''}><summary><span>${esc(q)}</span><i>+</i></summary><p>${esc(a)}</p></details>`).join('')}
     </section>
     ${priceCard()}
-    <section class="final">
+    <section class="final" data-reveal>
       <h2>${t.finalCta}</h2>
       <button class="cta" data-act="start"><span>${t.start}</span><span class="cta-arrow arrow">←</span></button>
     </section>
-    <p class="fine">${t.disclaimer}<br>${t.photos} · ${t.logosNote}</p>`;
+    <footer class="foot">© 2026 ${T.he.brand} · ${t.disclaimer}<br>${t.photos} · ${t.logosNote}</footer>`;
   }
+
+  // Les blocs marqués data-reveal apparaissent quand on arrive dessus en faisant défiler.
+  function reveal() {
+    const els = app.querySelectorAll('[data-reveal]');
+    if (!('IntersectionObserver' in window)) { els.forEach((e) => e.classList.add('in')); return; }
+    const io = new IntersectionObserver((list) => list.forEach((x) => {
+      if (!x.isIntersecting) return;
+      x.target.classList.add('in'); io.unobserve(x.target);
+      if (x.target.classList.contains('stats')) countUp();
+    }), { threshold: 0.12 });
+    els.forEach((e) => io.observe(e));
+  }
+
+  // Menu du haut (seulement sur l'accueil)
+  function nav() {
+    const n = document.getElementById('nav'); if (!n) return;
+    n.innerHTML = step === 0 ? `<a href="#how">${t.navHow}</a><a href="#recipes">${t.navRecipes}</a><a href="#faq">${t.navFaq}</a><button class="nav-cta" data-nav-start>${t.navCta}</button>` : '';
+  }
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-nav-start]')) { likeIdx = 0; go(1); return; }
+    const a = e.target.closest('#nav a');
+    if (a) { e.preventDefault(); const el = document.querySelector(a.getAttribute('href')); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  });
 
   function priceCard() {
     return `<section class="price">
@@ -386,8 +450,9 @@
   // ---------- Affichage et clics ----------
   function render() {
     document.body.classList.toggle('in-q', step > 0 && step <= STEPS.length);
+    document.body.classList.toggle('home', step === 0);
     app.innerHTML = step === 0 ? home() : step > STEPS.length ? result() : question();
-    initWheels();
+    initWheels(); nav(); if (step === 0) reveal();
   }
   // Les animations ne jouent qu'en changeant d'écran, pas à chaque toucher.
   let enterTimer;

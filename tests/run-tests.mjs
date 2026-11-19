@@ -83,6 +83,21 @@ t('budget trop bas signalé', poor.overBudget === true);
 const swapped = Plan.swapMeal(plan, man, data, prices, 0, 1, 99);
 t('remplacer un repas', swapped.days[0].meals[1].id !== plan.days[0].meals[1].id && swapped.days[1] === plan.days[1]);
 
+// --- Variété et préférences d'aliments ---
+const ids21 = plan.days.flatMap((d) => d.meals.map((m) => m.id));
+t('variété : 21 repas, au moins 18 plats différents', new Set(ids21).size >= 18, new Set(ids21).size);
+const noFish = Object.assign({}, man, { foods: { salmon: -1, tuna: -1 } });
+const pf = Plan.buildPlan(noFish, data, prices, 11, 100);
+t('aliment pas aimé : jamais dans la semaine', pf.days.every((d) => d.meals.every((m) => !m.ing.salmon && !m.ing.tuna)));
+t('aliment pas aimé : jamais dans les 3 choix', [0, 1, 2].every((mi) => Plan.mealOptions(pf, noFish, data, prices, 0, mi, 3, 4).every((o) => !o.ing.salmon && !o.ing.tuna)));
+const loveTofu = Object.assign({}, man, { foods: { tofu: 1 } });
+const countTofu = (p) => p.days.reduce((s, d) => s + d.meals.filter((m) => m.ing.tofu).length, 0);
+t('aliment aimé : plus souvent dans la semaine', [1, 2, 3].reduce((s, sd) => s + countTofu(Plan.buildPlan(loveTofu, data, prices, sd, 60)), 0) > [1, 2, 3].reduce((s, sd) => s + countTofu(Plan.buildPlan(man, data, prices, sd, 60)), 0));
+const hatesAll = Object.assign({}, man, { foods: Object.fromEntries(Plan.FOOD_CHOICES.map((id) => [id, -1])) });
+const ha = Plan.buildPlan(hatesAll, data, prices, 1, 40);
+t('tout refuser ne bloque pas l\'app (semaine quand même)', !ha.error && ha.days.length === 7);
+t('liste des aliments : tous connus', Plan.FOOD_CHOICES.every((id) => data.ingredientsById[id]));
+
 // --- Choisir parmi 3 plats ---
 const cur = plan.days[0].meals[1];
 const opts = Plan.mealOptions(plan, man, data, prices, 0, 1, 3, 5);
@@ -114,7 +129,8 @@ t('facteur famille (toi + 1 adulte + 2 enfants)', Math.abs(fam.needs.fam - famF)
 const m0 = fam.days[0].meals[0], k0 = Object.keys(m0.ing)[0];
 t('quantités famille = ta portion × facteur', Math.abs(m0.ing[k0] - m0.mine[k0] * famF) <= famF);
 t('un adulte plus lourd mange plus', Plan.memberKcal(Object.assign({}, mom, { weight: 90 })) > Plan.memberKcal(mom));
-t('courses famille plus chères que solo', fam.shop.total > Plan.buildPlan(Object.assign({}, man, { budget: Infinity }), data, prices, 42, 80).shop.total * 2);
+// on compare ce qui est mangé (une personne seule garde plus de paquets entamés à la maison)
+t('la famille mange bien plus que solo', fam.shop.eaten > Plan.buildPlan(Object.assign({}, man, { budget: Infinity }), data, prices, 42, 80).shop.eaten * 2);
 t('solo : facteur 1', Plan.buildPlan(man, data, prices, 42, 40).needs.fam === 1);
 
 // --- Comparaison des magasins ---

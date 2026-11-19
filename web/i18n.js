@@ -79,6 +79,8 @@ window.T = {
       ['ואם אני צמחוני או שומר כשרות?', 'בוחרים בשאלון: הכל, כשר (אף פעם לא בשר וחלב יחד), צמחוני או טבעוני.'],
       ['זה עולה כסף?', 'לא. כרגע האתר חינם לגמרי. נשמח לשמוע מה חשבתם!'],
     ],
+    q_foods: 'מה |אוהבים לאכול?', q_foods_d: 'לחיצה אחת: אוהב/ת 👍 · שתיים: לא אוהב/ת 👎 · שלוש: ביטול. אפשר לדלג.',
+    grpProt: 'חלבונים', grpDairy: 'מוצרי חלב', grpCarbs: 'פחמימות', grpVeg: 'ירקות ועוד',
     disclaimer: 'המידע כללי ואינו מחליף ייעוץ של דיאטנ/ית או רופא/ה.',
   },
   fr: {
@@ -160,6 +162,8 @@ window.T = {
       ['Et si je suis végétarien ou cacher ?', 'Tu choisis dans le questionnaire : de tout, cacher (jamais viande et lait ensemble), végétarien ou végan.'],
       ['C’est payant ?', 'Non. Pour l’instant, le site est entièrement gratuit. Dis-nous ce que tu en penses !'],
     ],
+    q_foods: 'Qu’est-ce que tu |aimes ?', q_foods_d: 'Un appui : j’aime 👍 · deux : je n’aime pas 👎 · trois : annuler. Tu peux passer.',
+    grpProt: 'Protéines', grpDairy: 'Laitages', grpCarbs: 'Féculents', grpVeg: 'Légumes et autres',
     disclaimer: 'Informations générales, ne remplacent pas l\'avis d\'un diététicien ou d\'un médecin.',
   },
 };

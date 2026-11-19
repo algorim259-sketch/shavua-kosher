@@ -40,7 +40,7 @@ npm test
 | Fichier | Rôle |
 | --- | --- |
 | `data/ingredients.json` | 38 ingrédients : nutrition pour 100 g (valeurs moyennes, approximatives), cacher, mots-clés pour les retrouver dans les fichiers de prix |
-| `data/recipes.json` | 32 recettes, grammes pour une portion de base, photo (Unsplash) |
+| `data/recipes.json` | 57 recettes (15 petits-déjeuners, 42 plats), grammes pour une portion de base, photo (Unsplash) |
 | `data/stores.json`, `data/cities.json` | magasins de toutes les chaînes, villes avec leur position |
 | `scripts/fetch-prices.mjs` + `prices-lib.mjs` | récupération et lecture des fichiers des chaînes |
 | `scripts/build-data.mjs` | fabrique `web/data.js` |

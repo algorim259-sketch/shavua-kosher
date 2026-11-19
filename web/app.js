@@ -19,10 +19,11 @@
 
   let lang = store.get('lang', 'he');
   let t = T[lang];
-  const defaults = { goal: null, city: null, stores: [], meals: 21, diet: 'all', sessions: '3-4', job: 'sit', likes: {}, family: false, members: [], age: 25, height: 175, weight: 75, sex: null, budget: null, shopStore: null };
+  const defaults = { goal: null, city: null, stores: [], meals: 21, diet: 'all', sessions: '3-4', job: 'sit', likes: {}, foods: {}, family: false, members: [], age: 25, height: 175, weight: 75, sex: null, budget: null, shopStore: null };
   let profile = Object.assign({}, defaults, store.get('profile', {}));
   if (!Array.isArray(profile.stores)) profile.stores = [];
   if (!Array.isArray(profile.members)) profile.members = [];
+  if (!profile.foods || typeof profile.foods !== 'object') profile.foods = {};
   profile.stores = profile.stores.filter((k) => STORE[k]);
   let step = 0, plan = null, tab = 'week', likeIdx = 0, cityQuery = '', minBudget = null;
   let picker = null; // repas dont on montre les 3 plats au choix : { d: jour, m: repas, seed }
@@ -219,7 +220,7 @@
   }
 
   // ---------- Questions ----------
-  const STEPS = ['goal', 'city', 'meals', 'family', 'diet', 'train', 'likes', 'body', 'sex', 'budget'];
+  const STEPS = ['goal', 'city', 'meals', 'family', 'diet', 'train', 'likes', 'foods', 'body', 'sex', 'budget'];
   const opt = (field, value, label, desc, icon) =>
     `<button class="opt ${profile[field] === value ? 'on' : ''}" data-set="${field}" data-val="${esc(value)}">${icon ? `<i class="ico">${icon}</i>` : ''}<span class="txt"><span>${label}</span>${desc ? `<small>${desc}</small>` : ''}</span><span class="check">✓</span></button>`;
 
@@ -312,6 +313,26 @@
         body = `<div class="card-like">${r ? `<img src="${img(r.img, 600, 360)}" alt="">` : ''}<div class="pad"><p class="count">${likeIdx + 1} / ${Plan.TAGS.length}</p><h3>${h}</h3><p>${d}</p>
           <div class="row2"><button class="no" data-like="0">✕ ${t.no}</button><button class="yes" data-like="1">✓ ${t.yes}</button></div></div></div>`;
       } else { body = `<p class="sub center">✓</p>`; canNext = true; }
+    } else if (key === 'foods') {
+      ttl = t.q_foods; desc = t.q_foods_d;
+      const GROUPS = [
+        ['grpProt', ['chicken', 'turkey', 'beef', 'salmon', 'tuna', 'eggs', 'tofu', 'lentils', 'chickpeas', 'beans']],
+        ['grpDairy', ['cottage', 'gvina', 'yogurt', 'yellowcheese', 'milk']],
+        ['grpCarbs', ['rice', 'pasta', 'ptitim', 'bulgur', 'quinoa', 'oats', 'bread', 'pita', 'tortilla', 'potato', 'sweetpotato']],
+        ['grpVeg', ['broccoli', 'spinach', 'pepper', 'carrot', 'tomato', 'cucumber', 'onion', 'banana', 'tahini', 'peanutbutter']],
+      ];
+      const EMOJI = { chicken: '🍗', turkey: '🦃', beef: '🥩', salmon: '🐟', tuna: '🥫', eggs: '🥚', tofu: '🧊', lentils: '🍛', chickpeas: '🧆', beans: '🥘',
+        cottage: '🥛', gvina: '🧀', yogurt: '🍦', yellowcheese: '🧀', milk: '🥛', rice: '🍚', pasta: '🍝', ptitim: '🍲', bulgur: '🌾', quinoa: '🌾', oats: '🥣',
+        bread: '🍞', pita: '🥙', tortilla: '🌯', potato: '🥔', sweetpotato: '🍠', broccoli: '🥦', spinach: '🥬', pepper: '🌶️', carrot: '🥕', tomato: '🍅',
+        cucumber: '🥒', onion: '🧅', banana: '🍌', tahini: '🍯', peanutbutter: '🥜' };
+      const f = profile.foods;
+      const liked = Object.values(f).filter((v) => v === 1).length, disliked = Object.values(f).filter((v) => v === -1).length;
+      body = `<p class="food-count"><span class="lk">👍 ${liked}</span><span class="dl">👎 ${disliked}</span></p>` + GROUPS.map(([g, ids]) => `<h3 class="mini">${t[g]}</h3>
+        <div class="food-grid">${ids.filter((id) => DATA.ingredientsById[id]).map((id) => {
+          const st = f[id] === 1 ? 'like' : f[id] === -1 ? 'dislike' : '';
+          return `<button class="food ${st}" data-food="${id}"><span class="em">${EMOJI[id] || '•'}</span><span class="nm">${esc(name(DATA.ingredientsById[id]))}</span><b>${st === 'like' ? '👍' : st === 'dislike' ? '👎' : ''}</b></button>`;
+        }).join('')}</div>`).join('');
+      canNext = true;
     } else if (key === 'body') {
       ttl = t.q_body; desc = t.wheelHint;
       body = `<div class="wheels">${wheel('age', 16, 90, t.years, t.age.replace(/ \(.*/, ''))}${wheel('height', 140, 210, 'cm', t.height.replace(/ \(.*/, ''))}${wheel('weight', 40, 180, 'kg', t.weight.replace(/ \(.*/, ''))}</div>`;
@@ -531,6 +552,13 @@
       if (['goal', 'sex'].includes(b.dataset.set)) setTimeout(() => go(step + 1), 180);
       render();
       return;
+    }
+    if (b.dataset.food) {
+      const id = b.dataset.food, cur = profile.foods[id] || 0;
+      const next = cur === 0 ? 1 : cur === 1 ? -1 : 0;
+      if (next) profile.foods[id] = next; else delete profile.foods[id];
+      profile.budget = null; save();
+      const y = window.scrollY; render(); window.scrollTo(0, y); return;
     }
     if (b.dataset.like) {
       profile.likes = Object.assign({}, profile.likes, { [Plan.TAGS[likeIdx]]: b.dataset.like === '1' });

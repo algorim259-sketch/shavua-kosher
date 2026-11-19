@@ -553,3 +553,17 @@ body.home .final .cta { max-width: 360px; margin: 18px auto 0; }
 .choice .cost { color: var(--brand-text); }
 .choices-act { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .choices-act .ghost { margin: 0; padding: 9px; font-size: 14px; }
+
+/* « Ce que tu aimes » : grille d'aliments à toucher */
+.food-count { display: flex; justify-content: center; gap: 10px; margin: 0; }
+.food-count span { background: var(--card); border: 1px solid var(--line); border-radius: 99px; padding: 3px 12px; font-weight: 800; font-size: 14px; }
+.food-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.food { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px 8px; background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; transition: transform .15s var(--ease), border-color .2s, background-color .2s; }
+.food:active { transform: scale(.95); }
+.food .em { font-size: 24px; line-height: 1.1; }
+.food .nm { font-size: 12px; font-weight: 700; line-height: 1.2; text-align: center; }
+.food b { position: absolute; top: 4px; inset-inline-end: 6px; font-size: 13px; }
+.food.like { border-color: var(--brand); background: var(--soft); }
+.food.dislike { border-color: var(--line); background: var(--bg); }
+.food.dislike .em, .food.dislike .nm { opacity: .45; text-decoration: line-through; }
+@media (min-width: 560px) { .food-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

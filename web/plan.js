@@ -91,10 +91,28 @@
         if (likes[t] === false) w -= 0.4;
       }
       if (profile.goal === 'gain' || profile.goal === 'lose') w += info.tags.protein ? 1 : 0;
-      out[r.meal].push({ r, info, w: Math.max(0.2, w) });
+      // aliments aimés (+1) / pas aimés (−1) choisis dans le questionnaire
+      const foods = profile.foods || {};
+      const ids = Object.keys(r.ing);
+      const disliked = ids.some((id) => foods[id] === -1);
+      w += Math.min(3, ids.filter((id) => foods[id] === 1).length * 1.2);
+      out[r.meal].push({ r, info, w: Math.max(0.2, w), disliked });
+    }
+    // On retire les plats avec un aliment pas aimé… sauf s'il ne resterait presque plus rien :
+    // dans ce cas on les garde, mais tout en bas de la liste.
+    const MIN = { breakfast: 3, main: 6 };
+    for (const kind of ['breakfast', 'main']) {
+      const kept = out[kind].filter((c) => !c.disliked);
+      if (kept.length >= MIN[kind]) out[kind] = kept;
+      else out[kind] = out[kind].map((c) => (c.disliked ? Object.assign({}, c, { w: 0.02 }) : c));
     }
     return out;
   }
+
+  // Aliments proposés dans la question « ce que tu aimes / n'aimes pas » (l'huile et les épices n'y sont pas)
+  const FOOD_CHOICES = ['chicken', 'turkey', 'beef', 'salmon', 'tuna', 'eggs', 'tofu', 'cottage', 'gvina', 'yogurt', 'yellowcheese', 'milk',
+    'lentils', 'chickpeas', 'beans', 'rice', 'pasta', 'ptitim', 'bulgur', 'quinoa', 'oats', 'bread', 'pita', 'tortilla',
+    'potato', 'sweetpotato', 'broccoli', 'spinach', 'pepper', 'carrot', 'tomato', 'cucumber', 'onion', 'banana', 'tahini', 'peanutbutter'];
 
   const scaleFor = (target, kcal) => Math.min(2.2, Math.max(0.6, target / kcal));
 
@@ -131,7 +149,9 @@
   }
 
   function pick(list, rand, used, prev, weightFn) {
-    const ok = list.filter((c) => (used[c.r.id] || 0) < 2 && c.r.id !== prev);
+    // d'abord des plats pas encore servis cette semaine ; un plat ne revient (2 fois max) que s'il n'y a plus de choix
+    const fresh = list.filter((c) => !used[c.r.id]);
+    const ok = fresh.length ? fresh : list.filter((c) => (used[c.r.id] || 0) < 2 && c.r.id !== prev);
     const pool = ok.length ? ok : list;
     const total = pool.reduce((s, c) => s + weightFn(c), 0);
     let x = rand() * total;
@@ -299,7 +319,7 @@
     return Object.assign({}, raw, { ingredientsById });
   }
 
-  const api = { needs, familyFactor, memberKcal, childKcal, recipeInfo, buildPlan, swapMeal, mealOptions, chooseMeal, shopping, compareStores, repriceDays, prepare, rng, SLOTS, TAGS };
+  const api = { FOOD_CHOICES, needs, familyFactor, memberKcal, childKcal, recipeInfo, buildPlan, swapMeal, mealOptions, chooseMeal, shopping, compareStores, repriceDays, prepare, rng, SLOTS, TAGS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Plan = api;
 })(typeof window !== 'undefined' ? window : this);
